@@ -81,7 +81,6 @@
   .qt-name { flex: 1; font-size: 12.5px; }
   .qt-status { min-width: 26px; font-size: 15px; text-align: center; }
   .qt-detail { font-size: 10.5px; color: #999; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .qt-confirm { display: none; }
 </style>
 </head>
 <body>
@@ -140,6 +139,9 @@
 (function () {
   'use strict';
 
+  // ───────────────────────── Status glyphs (declared first, used everywhere) ─────────────────────────
+  var statusGlyph = { pass: '✅', fail: '❌', unsupported: '🚫', timeout: '⏱', untested: '–' };
+
   // ───────────────────────── Logging ─────────────────────────
   var logEl = document.getElementById('log');
   function log(msg, level) {
@@ -164,14 +166,11 @@
   // ───────────────────────── Environment panel ─────────────────────────
   var envGrid = document.getElementById('env-grid');
   function envRow(label, ok, detail) {
-    var k = document.createElement('div');
-    k.className = 'k';
-    k.textContent = label;
+    var k = document.createElement('div'); k.className = 'k'; k.textContent = label;
     var v = document.createElement('div');
     v.className = ok === true ? 'ok' : (ok === false ? 'bad' : 'warn');
     v.textContent = (detail !== undefined ? detail : (ok ? 'yes' : 'no'));
-    envGrid.appendChild(k);
-    envGrid.appendChild(v);
+    envGrid.appendChild(k); envGrid.appendChild(v);
   }
 
   function renderEnv() {
@@ -192,24 +191,13 @@
     envRow('SpeechRecognition (dictation)', !!(window.SpeechRecognition || window.webkitSpeechRecognition));
     envRow('navigator.volumeManager (Cloud Phone)', !!navigator.volumeManager);
     envRow('navigator.hasFeature (Cloud Phone)', typeof navigator.hasFeature === 'function');
-
     if (typeof navigator.hasFeature === 'function') {
       ['AudioCapture', 'AudioPlayback', 'AudioSeek', 'AudioUpload'].forEach(function (feature) {
-        var k = document.createElement('div');
-        k.className = 'k';
-        k.textContent = '  hasFeature("' + feature + '")';
-        var v = document.createElement('div');
-        v.className = 'warn';
-        v.textContent = 'checking…';
-        envGrid.appendChild(k);
-        envGrid.appendChild(v);
-        navigator.hasFeature(feature).then(function (supported) {
-          v.className = supported ? 'ok' : 'bad';
-          v.textContent = supported ? 'yes' : 'no';
-        }).catch(function (err) {
-          v.className = 'bad';
-          v.textContent = 'error: ' + err.message;
-        });
+        var k = document.createElement('div'); k.className = 'k'; k.textContent = '  hasFeature("' + feature + '")';
+        var v = document.createElement('div'); v.className = 'warn'; v.textContent = 'checking…';
+        envGrid.appendChild(k); envGrid.appendChild(v);
+        navigator.hasFeature(feature).then(function (s) { v.className = s ? 'ok' : 'bad'; v.textContent = s ? 'yes' : 'no'; })
+          .catch(function (e) { v.className = 'bad'; v.textContent = 'error: ' + e.message; });
       });
     }
   }
@@ -219,36 +207,21 @@
   function blobArrayBuffer(blob) {
     if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
     return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onload = function () { resolve(reader.result); };
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(blob);
+      var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.onerror = reject; r.readAsArrayBuffer(blob);
     });
   }
-
   function blobToDataURL(blob) {
     return new Promise(function (resolve, reject) {
-      var reader = new FileReader();
-      reader.onloadend = function () { resolve(reader.result); };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
+      var r = new FileReader(); r.onloadend = function () { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(blob);
     });
   }
 
-  // Generic "did it actually start playing" race for <audio>/<video> elements
   function raceOutcome(mediaEl, timeoutMs) {
     timeoutMs = timeoutMs || 6000;
     return new Promise(function (resolve) {
       var settled = false;
-      function cleanup() {
-        clearTimeout(timer);
-        mediaEl.removeEventListener('playing', onPlaying);
-        mediaEl.removeEventListener('error', onError);
-      }
-      function onPlaying() {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'pass', detail: 'playing event fired' });
-      }
+      function cleanup() { clearTimeout(timer); mediaEl.removeEventListener('playing', onPlaying); mediaEl.removeEventListener('error', onError); }
+      function onPlaying() { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'playing event fired' }); }
       function onError() {
         if (settled) return; settled = true; cleanup();
         var err = mediaEl.error;
@@ -261,12 +234,9 @@
       mediaEl.addEventListener('playing', onPlaying);
       mediaEl.addEventListener('error', onError);
       var p;
-      try {
-        p = mediaEl.play();
-      } catch (err) {
+      try { p = mediaEl.play(); } catch (err) {
         if (settled) return; settled = true; cleanup();
-        resolve({ status: 'fail', detail: (err && err.message) ? err.message : String(err) });
-        return;
+        resolve({ status: 'fail', detail: (err && err.message) ? err.message : String(err) }); return;
       }
       if (p && typeof p.catch === 'function') {
         p.catch(function (err) {
@@ -277,25 +247,15 @@
     });
   }
 
-  // ───────────────────────── WAV encoder (for manual PCM capture) ─────────────────────────
+  // ───────────────────────── WAV encoder ─────────────────────────
   function encodeWAV(samples, sampleRate) {
     var buffer = new ArrayBuffer(44 + samples.length * 2);
     var view = new DataView(buffer);
-    function writeString(offset, str) {
-      for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-    }
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + samples.length * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
+    function ws(offset, str) { for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
+    ws(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, 'data');
     view.setUint32(40, samples.length * 2, true);
     var offset = 44;
     for (var i = 0; i < samples.length; i++, offset += 2) {
@@ -305,46 +265,26 @@
     return new Blob([view], { type: 'audio/wav' });
   }
 
-  // ───────────────────────── Recording method implementations ─────────────────────────
+  // ───────────────────────── Recording implementations ─────────────────────────
   function recordViaMediaRecorder(mimeType, durationMs) {
     durationMs = durationMs || 4000;
     return new Promise(function (resolve, reject) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        reject(new Error('navigator.mediaDevices.getUserMedia not available (insecure context or unsupported browser)'));
-        return;
-      }
-      if (typeof MediaRecorder === 'undefined') {
-        reject(new Error('MediaRecorder API not available'));
-        return;
-      }
-      if (mimeType && MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)) {
-        reject(new Error('MediaRecorder.isTypeSupported() is false for: ' + mimeType));
-        return;
-      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available (insecure context or unsupported browser)')); return; }
+      if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
+      if (mimeType && MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)) { reject(new Error('MediaRecorder.isTypeSupported() is false for: ' + mimeType)); return; }
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
         var recorder;
-        try {
-          recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream);
-        } catch (err) {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          reject(err);
-          return;
-        }
+        try { recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream); }
+        catch (err) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(err); return; }
         var chunks = [];
         recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
-        recorder.onerror = function (e) {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown')));
-        };
+        recorder.onerror = function (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
         recorder.onstop = function () {
           stream.getTracks().forEach(function (t) { t.stop(); });
-          var actualType = recorder.mimeType || mimeType || 'audio/webm';
-          resolve(new Blob(chunks, { type: actualType }));
+          resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' }));
         };
         recorder.start();
-        setTimeout(function () {
-          if (recorder.state !== 'inactive') recorder.stop();
-        }, durationMs);
+        setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
       }).catch(reject);
     });
   }
@@ -352,67 +292,30 @@
   function recordViaWebAudioPCM(durationMs) {
     durationMs = durationMs || 4000;
     return new Promise(function (resolve, reject) {
-      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) {
-        reject(new Error('AudioContext / Web Audio API is not available on this platform'));
-        return;
-      }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        reject(new Error('navigator.mediaDevices.getUserMedia not available'));
-        return;
-      }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { reject(new Error('AudioContext not available on this platform')); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available')); return; }
       navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-        var ctx;
-        try {
-          ctx = new AudioContextClass();
-        } catch (err) {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          reject(err);
-          return;
-        }
+        var ctx; try { ctx = new AC(); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(e); return; }
         var source, processor, mute;
         try {
           source = ctx.createMediaStreamSource(stream);
           processor = ctx.createScriptProcessor(4096, 1, 1);
-          mute = ctx.createGain();
-          mute.gain.value = 0; // prevent live mic feedback through speakers
-        } catch (err) {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          try { ctx.close(); } catch (e) {}
-          reject(err);
-          return;
-        }
-        var chunks = [];
-        var elapsed = 0;
-        var finished = false;
-        processor.onaudioprocess = function (e) {
-          var data = e.inputBuffer.getChannelData(0);
-          chunks.push(new Float32Array(data));
-          elapsed += (data.length / ctx.sampleRate) * 1000;
-        };
-        source.connect(processor);
-        processor.connect(mute);
-        mute.connect(ctx.destination);
-
+          mute = ctx.createGain(); mute.gain.value = 0;
+        } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); try { ctx.close(); } catch (_) {} reject(e); return; }
+        var chunks = [], finished = false;
+        processor.onaudioprocess = function (e) { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+        source.connect(processor); processor.connect(mute); mute.connect(ctx.destination);
         function finish() {
-          if (finished) return;
-          finished = true;
-          try { processor.disconnect(); } catch (e) {}
-          try { source.disconnect(); } catch (e) {}
+          if (finished) return; finished = true;
+          try { processor.disconnect(); } catch (_) {} try { source.disconnect(); } catch (_) {}
           stream.getTracks().forEach(function (t) { t.stop(); });
-          var totalLength = chunks.reduce(function (a, c) { return a + c.length; }, 0);
-          if (totalLength === 0) {
-            try { ctx.close(); } catch (e) {}
-            reject(new Error('No audio samples captured — onaudioprocess never fired (ScriptProcessorNode likely unsupported here)'));
-            return;
-          }
-          var merged = new Float32Array(totalLength);
-          var off = 0;
+          var total = chunks.reduce(function (a, c) { return a + c.length; }, 0);
+          if (total === 0) { try { ctx.close(); } catch (_) {} reject(new Error('No samples captured — ScriptProcessorNode likely unsupported')); return; }
+          var merged = new Float32Array(total), off = 0;
           chunks.forEach(function (c) { merged.set(c, off); off += c.length; });
-          var sampleRate = ctx.sampleRate;
-          var blob = encodeWAV(merged, sampleRate);
-          try { ctx.close(); } catch (e) {}
-          resolve(blob);
+          var blob = encodeWAV(merged, ctx.sampleRate);
+          try { ctx.close(); } catch (_) {} resolve(blob);
         }
         setTimeout(finish, durationMs);
       }).catch(reject);
@@ -422,317 +325,202 @@
   function recordViaFileInput(useCapture) {
     return new Promise(function (resolve, reject) {
       var input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'audio/*';
+      input.type = 'file'; input.accept = 'audio/*';
       if (useCapture) input.setAttribute('capture', 'microphone');
-      input.style.display = 'none';
-      document.body.appendChild(input);
+      input.style.display = 'none'; document.body.appendChild(input);
       var settled = false;
       input.addEventListener('change', function () {
         if (settled) return; settled = true;
-        var file = input.files && input.files[0];
-        document.body.removeChild(input);
+        var file = input.files && input.files[0]; document.body.removeChild(input);
         if (!file) { reject(new Error('No file selected (cancelled)')); return; }
         resolve(file);
       }, { once: true });
-      // Some browsers fire 'cancel' on the input when the dialog is dismissed
       input.addEventListener('cancel', function () {
-        if (settled) return; settled = true;
-        document.body.removeChild(input);
-        reject(new Error('File dialog cancelled'));
+        if (settled) return; settled = true; document.body.removeChild(input); reject(new Error('File dialog cancelled'));
       }, { once: true });
       input.click();
     });
   }
 
+  // ── Recording methods: 5 primary + 3 "known unsupported" probes — no duplicates ──
   var recordingMethods = [
-    { id: 'mr-webm-opus', name: 'MediaRecorder — WebM/Opus', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
-    { id: 'mr-default', name: 'MediaRecorder — Browser Default', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder(null); } },
-    { id: 'webaudio-pcm', name: 'Web Audio PCM → WAV (ScriptProcessorNode)', cat: 'getUserMedia + Web Audio', run: function () { return recordViaWebAudioPCM(); } },
-    { id: 'native-capture', name: 'Native System Recorder (capture=microphone)', cat: 'File Input (like dictate flow)', run: function () { return recordViaFileInput(true); } },
-    { id: 'file-upload', name: 'Audio File Upload (no capture)', cat: 'File Input (like dictate flow)', run: function () { return recordViaFileInput(false); } },
-    { id: 'mr-mp4-aac', name: 'MediaRecorder — MP4/AAC ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
-    { id: 'mr-ogg-opus', name: 'MediaRecorder — Ogg/Opus ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
-    { id: 'mr-wav', name: 'MediaRecorder — WAV ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/wav'); } }
+    { id: 'mr-webm-opus',  name: 'MediaRecorder — WebM/Opus',                     cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
+    { id: 'mr-default',    name: 'MediaRecorder — Browser Default',                cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder(null); } },
+    { id: 'webaudio-pcm',  name: 'Web Audio PCM → WAV (ScriptProcessorNode)',      cat: 'getUserMedia + Web Audio',        run: function () { return recordViaWebAudioPCM(); } },
+    { id: 'native-capture',name: 'Native System Recorder (capture=microphone)',    cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(true); } },
+    { id: 'file-upload',   name: 'Audio File Upload (no capture)',                 cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(false); } },
+    { id: 'mr-mp4-aac',   name: 'MediaRecorder — MP4/AAC ⚠️ known unsupported',  cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
+    { id: 'mr-ogg-opus',  name: 'MediaRecorder — Ogg/Opus ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
+    { id: 'mr-wav',       name: 'MediaRecorder — WAV ⚠️ known unsupported',       cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/wav'); } }
   ];
 
-  // ───────────────────────── Playback method implementations ─────────────────────────
+  // ───────────────────────── Playback implementations ─────────────────────────
   function playAudioElementBlobUrl(blob) {
-    var url = URL.createObjectURL(blob);
-    var audio = document.createElement('audio');
-    audio.style.display = 'none';
-    document.body.appendChild(audio);
-    audio.src = url;
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); audio.removeAttribute('src'); audio.load();
-      document.body.removeChild(audio); URL.revokeObjectURL(url);
-    });
+    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
+    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
+    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
   }
-
   function playAudioElementDataUri(blob) {
     return blobToDataURL(blob).then(function (dataUrl) {
       var audio = document.createElement('audio');
-      audio.style.display = 'none';
-      document.body.appendChild(audio);
-      audio.src = dataUrl;
-      return raceOutcome(audio).finally(function () {
-        audio.pause(); audio.removeAttribute('src'); audio.load();
-        document.body.removeChild(audio);
-      });
+      audio.style.display = 'none'; document.body.appendChild(audio); audio.src = dataUrl;
+      return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); });
     });
   }
-
   function playJsAudioObject(blob) {
-    var url = URL.createObjectURL(blob);
-    var audio = new Audio(url); // not attached to DOM
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); URL.revokeObjectURL(url);
-    });
+    var url = URL.createObjectURL(blob), audio = new Audio(url);
+    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
   }
-
   function playAudioSourceElement(blob) {
-    var url = URL.createObjectURL(blob);
-    var audio = document.createElement('audio');
-    audio.style.display = 'none';
-    var source = document.createElement('source');
-    source.src = url;
-    source.type = blob.type || 'audio/webm';
-    audio.appendChild(source);
-    document.body.appendChild(audio);
-    audio.load();
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); document.body.removeChild(audio); URL.revokeObjectURL(url);
-    });
+    var url = URL.createObjectURL(blob), audio = document.createElement('audio'), source = document.createElement('source');
+    audio.style.display = 'none'; source.src = url; source.type = blob.type || 'audio/webm';
+    audio.appendChild(source); document.body.appendChild(audio); audio.load();
+    return raceOutcome(audio).finally(function () { audio.pause(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
   }
-
   function playViaWebAudioDecode(blob) {
-    var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return Promise.resolve({ status: 'unsupported', detail: 'AudioContext not available' });
-    var ctx = new AudioContextClass();
-    return blobArrayBuffer(blob).then(function (arrayBuffer) {
-      return new Promise(function (resolve, reject) {
-        var maybePromise = ctx.decodeAudioData(arrayBuffer.slice(0), resolve, reject);
-        if (maybePromise && typeof maybePromise.then === 'function') maybePromise.then(resolve, reject);
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return Promise.resolve({ status: 'unsupported', detail: 'AudioContext not available' });
+    var ctx = new AC();
+    return blobArrayBuffer(blob).then(function (ab) {
+      return new Promise(function (res, rej) {
+        var p = ctx.decodeAudioData(ab.slice(0), res, rej);
+        if (p && typeof p.then === 'function') p.then(res, rej);
       });
-    }).then(function (audioBuffer) {
-      var source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      source.start(0);
-      return new Promise(function (resolve) { setTimeout(resolve, 300); }).then(function () {
-        return { status: 'pass', detail: 'decoded & started (' + audioBuffer.duration.toFixed(2) + 's) — confirm audibly' };
+    }).then(function (audioBuf) {
+      var src = ctx.createBufferSource(); src.buffer = audioBuf; src.connect(ctx.destination); src.start(0);
+      return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
+        return { status: 'pass', detail: 'decoded & started (' + audioBuf.duration.toFixed(2) + 's) — confirm audibly' };
       });
-    }).catch(function (err) {
-      return { status: 'fail', detail: (err && err.message) ? err.message : String(err) };
-    }).finally(function () {
-      setTimeout(function () { try { ctx.close(); } catch (e) {} }, 4000);
-    });
+    }).catch(function (e) { return { status: 'fail', detail: (e && e.message) ? e.message : String(e) }; })
+      .finally(function () { setTimeout(function () { try { ctx.close(); } catch (_) {} }, 4000); });
   }
-
   function playViaVideoElement(blob) {
-    var url = URL.createObjectURL(blob);
-    var video = document.createElement('video');
-    video.style.display = 'none';
-    document.body.appendChild(video);
-    video.src = url;
-    return raceOutcome(video).finally(function () {
-      video.pause(); document.body.removeChild(video); URL.revokeObjectURL(url);
-    });
+    var url = URL.createObjectURL(blob), video = document.createElement('video');
+    video.style.display = 'none'; document.body.appendChild(video); video.src = url;
+    return raceOutcome(video).finally(function () { video.pause(); document.body.removeChild(video); URL.revokeObjectURL(url); });
   }
-
   function playViaIframe(blob) {
     var url = URL.createObjectURL(blob);
     return new Promise(function (resolve) {
-      var settled = false;
-      var iframe = document.createElement('iframe');
+      var settled = false, iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      var timer = setTimeout(function () {
-        if (settled) return; settled = true;
-        cleanup();
-        resolve({ status: 'timeout', detail: 'iframe did not fire load/error within 6s' });
-      }, 6000);
-      function cleanup() {
-        clearTimeout(timer);
-        document.body.removeChild(iframe);
-        URL.revokeObjectURL(url);
-      }
-      iframe.onload = function () {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'pass', detail: 'iframe loaded native player — confirm audibly / inspect UI' });
-      };
-      iframe.onerror = function () {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'fail', detail: 'iframe error event' });
-      };
-      iframe.src = url;
-      document.body.appendChild(iframe);
+      var timer = setTimeout(function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'timeout', detail: 'iframe did not fire load/error within 6s' }); }, 6000);
+      function cleanup() { clearTimeout(timer); document.body.removeChild(iframe); URL.revokeObjectURL(url); }
+      iframe.onload = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'iframe loaded native player — confirm audibly' }); };
+      iframe.onerror = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'fail', detail: 'iframe error event' }); };
+      iframe.src = url; document.body.appendChild(iframe);
     });
   }
-
   function playViaMediaSource(blob) {
     if (typeof MediaSource === 'undefined') return Promise.resolve({ status: 'unsupported', detail: 'MediaSource is not defined' });
     return new Promise(function (resolve) {
-      var settled = false;
-      var mediaSource, audio, url, timer;
+      var settled = false, mediaSource, audio, url, timer;
       function finish(result) {
-        if (settled) return; settled = true;
-        clearTimeout(timer);
-        try { audio.pause(); } catch (e) {}
-        try { document.body.removeChild(audio); } catch (e) {}
-        try { URL.revokeObjectURL(url); } catch (e) {}
+        if (settled) return; settled = true; clearTimeout(timer);
+        try { audio.pause(); } catch (_) {} try { document.body.removeChild(audio); } catch (_) {} try { URL.revokeObjectURL(url); } catch (_) {}
         resolve(result);
       }
       try {
-        mediaSource = new MediaSource();
-        audio = document.createElement('audio');
-        audio.style.display = 'none';
-        document.body.appendChild(audio);
-        url = URL.createObjectURL(mediaSource);
-        audio.src = url;
+        mediaSource = new MediaSource(); audio = document.createElement('audio'); audio.style.display = 'none';
+        document.body.appendChild(audio); url = URL.createObjectURL(mediaSource); audio.src = url;
         timer = setTimeout(function () { finish({ status: 'timeout', detail: 'sourceopen/playing not reached within 6s' }); }, 6000);
         mediaSource.addEventListener('sourceopen', function () {
           try {
             var mime = blob.type || 'audio/webm;codecs=opus';
-            if (!MediaSource.isTypeSupported(mime)) {
-              finish({ status: 'unsupported', detail: 'MediaSource.isTypeSupported() false for ' + mime });
-              return;
-            }
-            var sourceBuffer = mediaSource.addSourceBuffer(mime);
-            blobArrayBuffer(blob).then(function (arrayBuffer) {
-              sourceBuffer.addEventListener('updateend', function () {
-                try { mediaSource.endOfStream(); } catch (e) {}
-              }, { once: true });
-              sourceBuffer.appendBuffer(arrayBuffer);
-              raceOutcome(audio).then(finish);
-            }).catch(function (err) {
-              finish({ status: 'fail', detail: (err && err.message) ? err.message : String(err) });
-            });
-          } catch (err) {
-            finish({ status: 'fail', detail: (err && err.message) ? err.message : String(err) });
-          }
+            if (!MediaSource.isTypeSupported(mime)) { finish({ status: 'unsupported', detail: 'MediaSource.isTypeSupported() false for ' + mime }); return; }
+            var sb = mediaSource.addSourceBuffer(mime);
+            blobArrayBuffer(blob).then(function (ab) {
+              sb.addEventListener('updateend', function () { try { mediaSource.endOfStream(); } catch (_) {} }, { once: true });
+              sb.appendBuffer(ab); raceOutcome(audio).then(finish);
+            }).catch(function (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); });
+          } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
         }, { once: true });
-      } catch (err) {
-        finish({ status: 'fail', detail: (err && err.message) ? err.message : String(err) });
-      }
+      } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
     });
   }
 
+  // Cloud Phone audio channel unlock
   function unlockCloudPhoneAudioChannel() {
-    // Mirrors the exact fix already in app.js addMessage(): the Cloud Phone
-    // media channel can stay muted/suspended until a volume event or
-    // AudioContext resume wakes it up.
     if (!window._testSuiteAudioCtx) {
-      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
     }
     if (window._testSuiteAudioCtx && window._testSuiteAudioCtx.state === 'suspended') {
-      try { window._testSuiteAudioCtx.resume(); } catch (e) {}
+      try { window._testSuiteAudioCtx.resume(); } catch (_) {}
     }
-    if (navigator.volumeManager && navigator.volumeManager.requestUp) {
-      try { navigator.volumeManager.requestUp(); } catch (e) {}
-    }
+    if (navigator.volumeManager && navigator.volumeManager.requestUp) { try { navigator.volumeManager.requestUp(); } catch (_) {} }
   }
-
   function playAudioElementBlobUrlUnlocked(blob) {
-    var url = URL.createObjectURL(blob);
-    var audio = document.createElement('audio');
-    audio.style.display = 'none';
-    document.body.appendChild(audio);
-    audio.src = url;
+    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
+    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
     unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); audio.removeAttribute('src'); audio.load();
-      document.body.removeChild(audio); URL.revokeObjectURL(url);
-    });
+    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
   }
-
   function playJsAudioObjectUnlocked(blob) {
-    var url = URL.createObjectURL(blob);
-    var audio = new Audio(url);
+    var url = URL.createObjectURL(blob), audio = new Audio(url);
     unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); URL.revokeObjectURL(url);
-    });
+    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
   }
-
   function playAudioElementUnlockThenPlay(blob) {
-    // Same as above, but unlock happens INSIDE a 'play' event handler
-    // (matches app.js exactly: addEventListener('play', ...)) rather than
-    // before .play() is called — some platforms only honor the unlock if
-    // it happens synchronously within the play gesture/event.
-    var url = URL.createObjectURL(blob);
-    var audio = document.createElement('audio');
-    audio.style.display = 'none';
-    document.body.appendChild(audio);
-    audio.src = url;
+    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
+    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
     audio.addEventListener('play', unlockCloudPhoneAudioChannel, { once: true });
-    return raceOutcome(audio).finally(function () {
-      audio.pause(); audio.removeAttribute('src'); audio.load();
-      document.body.removeChild(audio); URL.revokeObjectURL(url);
-    });
+    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
   }
 
-  // Normalize raceOutcome-based functions (which resolve plain objects already)
-  // vs the ones above that return {status, detail} directly — all playback
-  // runners must resolve to {status, detail}, never throw.
   function wrapPlayback(fn) {
     return function (blob) {
-      return Promise.resolve().then(function () { return fn(blob); }).catch(function (err) {
-        return { status: 'fail', detail: (err && err.message) ? err.message : String(err) };
-      });
+      return Promise.resolve().then(function () { return fn(blob); })
+        .catch(function (err) { return { status: 'fail', detail: (err && err.message) ? err.message : String(err) }; });
     };
   }
 
+  // ── Playback methods: plain-text names (no HTML tags — they go into textContent) ──
   var playbackMethods = [
-    { id: 'audio-bloburl', name: '<audio> + Blob URL', run: wrapPlayback(playAudioElementBlobUrl) },
-    { id: 'audio-bloburl-unlock', name: '<audio> + Blob URL + Unlock (pre-play)', run: wrapPlayback(playAudioElementBlobUrlUnlocked) },
-    { id: 'audio-unlock-onplay', name: '<audio> + Unlock on "play" event (matches app.js)', run: wrapPlayback(playAudioElementUnlockThenPlay) },
-    { id: 'audio-datauri', name: '<audio> + Data URI', run: wrapPlayback(playAudioElementDataUri) },
-    { id: 'js-audio-obj', name: 'new Audio() + Blob URL', run: wrapPlayback(playJsAudioObject) },
-    { id: 'js-audio-obj-unlock', name: 'new Audio() + Unlock', run: wrapPlayback(playJsAudioObjectUnlocked) },
-    { id: 'audio-source', name: '<audio><source></audio>', run: wrapPlayback(playAudioSourceElement) },
-    { id: 'webaudio-decode', name: 'Web Audio decodeAudioData', run: wrapPlayback(playViaWebAudioDecode) },
-    { id: 'video-element', name: '<video> element', run: wrapPlayback(playViaVideoElement) },
-    { id: 'iframe-embed', name: '<iframe> native player', run: wrapPlayback(playViaIframe) },
-    { id: 'media-source', name: 'MediaSource Extensions', run: wrapPlayback(playViaMediaSource) }
+    { id: 'audio-bloburl',        name: 'audio element + Blob URL',                         run: wrapPlayback(playAudioElementBlobUrl) },
+    { id: 'audio-bloburl-unlock', name: 'audio element + Blob URL + Unlock (pre-play)',      run: wrapPlayback(playAudioElementBlobUrlUnlocked) },
+    { id: 'audio-unlock-onplay',  name: 'audio element + Unlock on "play" event (app.js)',   run: wrapPlayback(playAudioElementUnlockThenPlay) },
+    { id: 'audio-datauri',        name: 'audio element + Data URI',                          run: wrapPlayback(playAudioElementDataUri) },
+    { id: 'js-audio-obj',         name: 'new Audio() + Blob URL',                            run: wrapPlayback(playJsAudioObject) },
+    { id: 'js-audio-obj-unlock',  name: 'new Audio() + Blob URL + Unlock',                   run: wrapPlayback(playJsAudioObjectUnlocked) },
+    { id: 'audio-source',         name: 'audio + child source element',                      run: wrapPlayback(playAudioSourceElement) },
+    { id: 'webaudio-decode',      name: 'Web Audio decodeAudioData',                         run: wrapPlayback(playViaWebAudioDecode) },
+    { id: 'video-element',        name: 'video element (audio-only blob)',                   run: wrapPlayback(playViaVideoElement) },
+    { id: 'iframe-embed',         name: 'iframe native player',                              run: wrapPlayback(playViaIframe) },
+    { id: 'media-source',         name: 'MediaSource Extensions',                            run: wrapPlayback(playViaMediaSource) }
   ];
 
   // ───────────────────────── Recording cards UI ─────────────────────────
   var recCardsEl = document.getElementById('rec-cards');
-  var recordings = []; // { id, methodId, methodName, blob, url, mimeType, sizeKb, ts, matrixCells:{} }
+  var recordings = [];
   var lastRecording = null;
 
   recordingMethods.forEach(function (method) {
-    var card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML =
-      '<div class="cat">' + method.cat + '</div>' +
-      '<div class="name">' + method.name + '</div>' +
-      '<div class="status" id="status-' + method.id + '">idle</div>' +
-      '<button id="btn-' + method.id + '">Record</button>';
+    var card = document.createElement('div'); card.className = 'card';
+    // Use textContent for all user-visible strings to avoid HTML injection issues
+    var catEl = document.createElement('div'); catEl.className = 'cat'; catEl.textContent = method.cat;
+    var nameEl = document.createElement('div'); nameEl.className = 'name'; nameEl.textContent = method.name;
+    var statusEl = document.createElement('div'); statusEl.className = 'status'; statusEl.textContent = 'idle';
+    var btn = document.createElement('button'); btn.textContent = 'Record';
+    card.appendChild(catEl); card.appendChild(nameEl); card.appendChild(statusEl); card.appendChild(btn);
     recCardsEl.appendChild(card);
-
-    var btn = card.querySelector('#btn-' + method.id);
-    var statusEl = card.querySelector('#status-' + method.id);
 
     btn.addEventListener('click', function () {
       btn.disabled = true;
-      var isFileInput = (method.id === 'native-capture' || method.id === 'file-upload');
-      statusEl.textContent = isFileInput ? 'waiting for file dialog…' : 'recording (4s)…';
+      var isFile = (method.id === 'native-capture' || method.id === 'file-upload');
+      statusEl.textContent = isFile ? 'waiting for file dialog…' : 'recording (4s)…';
       statusEl.className = 'status warn';
-      log('Starting recording method: ' + method.name);
+      log('Starting: ' + method.name);
       method.run().then(function (blob) {
         statusEl.className = 'status ok';
-        statusEl.textContent = 'OK — ' + (blob.type || 'unknown type') + ', ' + (blob.size / 1024).toFixed(1) + ' KB';
-        log('Recorded OK via "' + method.name + '" — type=' + blob.type + ' size=' + blob.size + 'B', 'ok');
+        statusEl.textContent = 'OK — ' + (blob.type || 'unknown') + ', ' + (blob.size / 1024).toFixed(1) + ' KB';
+        log('OK via "' + method.name + '" type=' + blob.type + ' size=' + blob.size + 'B', 'ok');
         addRecording(method, blob);
       }).catch(function (err) {
         statusEl.className = 'status bad';
         var msg = (err && err.message) ? err.message : String(err);
         statusEl.textContent = 'FAILED — ' + msg;
-        log('Recording FAILED via "' + method.name + '": ' + msg, 'err');
-      }).finally(function () {
-        btn.disabled = false;
-      });
+        log('FAILED "' + method.name + '": ' + msg, 'err');
+      }).finally(function () { btn.disabled = false; });
     });
   });
 
@@ -741,51 +529,47 @@
   var quickListEl = document.getElementById('quick-test-list');
 
   function renderQuickTest() {
+    quickListEl.innerHTML = '';
     if (!lastRecording) {
       quickTargetEl.textContent = 'No recording yet — record something above first.';
-      quickListEl.innerHTML = '';
       return;
     }
-    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName + ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
-    quickListEl.innerHTML = '';
-    playbackMethods.forEach(function (pm) {
-      var row = document.createElement('div');
-      row.className = 'qt-row';
-      row.innerHTML =
-        '<div class="qt-name">' + pm.name + '</div>' +
-        '<div class="qt-detail"></div>' +
-        '<div class="qt-status">–</div>' +
-        '<button class="qt-confirm">❔</button>' +
-        '<button class="qt-test-btn">▶ Test</button>';
-      var detailEl = row.querySelector('.qt-detail');
-      var statusEl = row.querySelector('.qt-status');
-      var confirmBtn = row.querySelector('.qt-confirm');
-      var testBtn = row.querySelector('.qt-test-btn');
-      var confirmState = 0;
+    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName +
+      ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
 
+    playbackMethods.forEach(function (pm) {
+      var row = document.createElement('div'); row.className = 'qt-row';
+
+      var nameEl = document.createElement('div'); nameEl.className = 'qt-name';
+      nameEl.textContent = pm.name;  // textContent — safe, no HTML parsing
+
+      var detailEl = document.createElement('div'); detailEl.className = 'qt-detail';
+      var statusEl = document.createElement('div'); statusEl.className = 'qt-status'; statusEl.textContent = '–';
+
+      var confirmBtn = document.createElement('button');
+      confirmBtn.textContent = '❔'; confirmBtn.style.display = 'none';
+      confirmBtn.title = 'Cycles: Unconfirmed → 🔊 Audible → 🔇 Silent';
+      var cState = 0;
       confirmBtn.addEventListener('click', function () {
-        confirmState = (confirmState + 1) % 3;
-        if (confirmState === 0) confirmBtn.textContent = '❔';
-        else if (confirmState === 1) confirmBtn.textContent = '🔊';
-        else confirmBtn.textContent = '🔇';
+        cState = (cState + 1) % 3;
+        confirmBtn.textContent = cState === 0 ? '❔' : cState === 1 ? '🔊' : '🔇';
       });
 
+      var testBtn = document.createElement('button'); testBtn.textContent = '▶ Test';
       testBtn.addEventListener('click', function () {
-        var rec = lastRecording; // capture at click time
-        testBtn.disabled = true;
-        statusEl.textContent = '⏳';
-        detailEl.textContent = '';
-        log('Quick test: "' + pm.name + '" on last recording (' + rec.methodName + ')');
+        var rec = lastRecording;
+        testBtn.disabled = true; statusEl.textContent = '⏳'; detailEl.textContent = ''; confirmBtn.style.display = 'none';
+        log('Quick test: "' + pm.name + '" on "' + rec.methodName + '"');
         pm.run(rec.blob).then(function (result) {
           statusEl.textContent = statusGlyph[result.status] || result.status;
-          detailEl.textContent = result.detail || '';
-          detailEl.title = result.detail || '';
-          confirmBtn.style.display = (result.status === 'pass') ? 'inline-block' : 'none';
-          var level = result.status === 'pass' ? 'ok' : (result.status === 'fail' ? 'err' : 'info');
-          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), level);
+          detailEl.textContent = result.detail || ''; detailEl.title = result.detail || '';
+          confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
+          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
         }).finally(function () { testBtn.disabled = false; });
       });
 
+      row.appendChild(nameEl); row.appendChild(detailEl); row.appendChild(statusEl);
+      row.appendChild(confirmBtn); row.appendChild(testBtn);
       quickListEl.appendChild(row);
     });
   }
@@ -798,15 +582,9 @@
   function addRecording(method, blob) {
     recCounter++;
     var rec = {
-      id: 'rec' + recCounter,
-      methodId: method.id,
-      methodName: method.name,
-      blob: blob,
-      url: URL.createObjectURL(blob),
-      mimeType: blob.type || 'unknown',
-      sizeKb: (blob.size / 1024).toFixed(1),
-      ts: new Date().toLocaleTimeString(),
-      matrixCells: {}
+      id: 'rec' + recCounter, methodId: method.id, methodName: method.name, blob: blob,
+      url: URL.createObjectURL(blob), mimeType: blob.type || 'unknown',
+      sizeKb: (blob.size / 1024).toFixed(1), ts: new Date().toLocaleTimeString(), matrixCells: {}
     };
     recordings.push(rec);
     lastRecording = rec;
@@ -815,33 +593,7 @@
     renderQuickTest();
   }
 
-  function renderRecordingsList() {
-    if (recordings.length === 0) {
-      recordingsListEl.innerHTML = '<div class="empty-note">No recordings yet — use a method above.</div>';
-      return;
-    }
-    recordingsListEl.innerHTML = '';
-    recordings.forEach(function (rec) {
-      var row = document.createElement('div');
-      row.className = 'rec-row';
-      row.innerHTML =
-        '<strong>' + rec.methodName + '</strong>' +
-        '<div class="meta">' + rec.mimeType + ' · ' + rec.sizeKb + ' KB · captured ' + rec.ts + '</div>' +
-        '<audio controls src="' + rec.url + '"></audio>' +
-        '<div class="btn-row">' +
-          '<a href="' + rec.url + '" download="' + sanitizeFilename(rec.methodName) + '.' + extFromMime(rec.mimeType) + '"><button>⬇ Download</button></a>' +
-          '<button class="test-all-btn">▶ Test all playback methods</button>' +
-        '</div>';
-      row.querySelector('.test-all-btn').addEventListener('click', function () {
-        runAllPlaybackForRecording(rec);
-      });
-      recordingsListEl.appendChild(row);
-    });
-  }
-
-  function sanitizeFilename(s) {
-    return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-  }
+  function sanitizeFilename(s) { return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase(); }
   function extFromMime(mime) {
     if (!mime) return 'bin';
     if (mime.indexOf('webm') !== -1) return 'webm';
@@ -851,89 +603,86 @@
     return 'audio';
   }
 
+  function renderRecordingsList() {
+    if (recordings.length === 0) {
+      recordingsListEl.innerHTML = '<div class="empty-note">No recordings yet — use a method above.</div>'; return;
+    }
+    recordingsListEl.innerHTML = '';
+    recordings.forEach(function (rec) {
+      var row = document.createElement('div'); row.className = 'rec-row';
+      var title = document.createElement('strong'); title.textContent = rec.methodName;
+      var meta = document.createElement('div'); meta.className = 'meta';
+      meta.textContent = rec.mimeType + ' · ' + rec.sizeKb + ' KB · captured ' + rec.ts;
+      var audioEl = document.createElement('audio'); audioEl.controls = true; audioEl.src = rec.url;
+      var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
+      var dlLink = document.createElement('a'); dlLink.href = rec.url;
+      dlLink.download = sanitizeFilename(rec.methodName) + '.' + extFromMime(rec.mimeType);
+      var dlBtn = document.createElement('button'); dlBtn.textContent = '⬇ Download'; dlLink.appendChild(dlBtn);
+      var testAllBtn = document.createElement('button'); testAllBtn.textContent = '▶ Test all playback methods';
+      testAllBtn.addEventListener('click', function () { runAllPlaybackForRecording(rec); });
+      btnRow.appendChild(dlLink); btnRow.appendChild(testAllBtn);
+      row.appendChild(title); row.appendChild(meta); row.appendChild(audioEl); row.appendChild(btnRow);
+      recordingsListEl.appendChild(row);
+    });
+  }
+
   document.getElementById('clear-recordings').addEventListener('click', function () {
     recordings.forEach(function (rec) { URL.revokeObjectURL(rec.url); });
-    recordings = [];
-    lastRecording = null;
-    renderRecordingsList();
-    renderQuickTest();
-    matrixTableEl.innerHTML = '';
+    recordings = []; lastRecording = null;
+    renderRecordingsList(); renderQuickTest(); matrixTableEl.innerHTML = '';
     log('Cleared all recordings and matrix', 'info');
   });
 
   // ───────────────────────── Matrix UI ─────────────────────────
   function ensureMatrixHeader() {
     if (matrixTableEl.querySelector('thead')) return;
-    var thead = document.createElement('thead');
-    var tr = document.createElement('tr');
-    var corner = document.createElement('th');
-    corner.className = 'rowhead';
-    corner.textContent = 'Recording \\ Playback';
+    var thead = document.createElement('thead'), tr = document.createElement('tr');
+    var corner = document.createElement('th'); corner.className = 'rowhead'; corner.textContent = 'Recording \\ Playback';
     tr.appendChild(corner);
     playbackMethods.forEach(function (pm) {
-      var th = document.createElement('th');
-      th.textContent = pm.name;
-      tr.appendChild(th);
+      var th = document.createElement('th'); th.textContent = pm.name; tr.appendChild(th);
     });
-    thead.appendChild(tr);
-    matrixTableEl.appendChild(thead);
-    matrixTableEl.appendChild(document.createElement('tbody'));
+    thead.appendChild(tr); matrixTableEl.appendChild(thead); matrixTableEl.appendChild(document.createElement('tbody'));
   }
 
   function addMatrixRow(rec) {
     ensureMatrixHeader();
-    var tbody = matrixTableEl.querySelector('tbody');
-    var tr = document.createElement('tr');
-    var rowhead = document.createElement('td');
-    rowhead.className = 'rowhead';
+    var tbody = matrixTableEl.querySelector('tbody'), tr = document.createElement('tr');
+    var rowhead = document.createElement('td'); rowhead.className = 'rowhead';
     rowhead.textContent = rec.methodName + ' (' + rec.ts + ')';
     tr.appendChild(rowhead);
-
     playbackMethods.forEach(function (pm) {
-      var td = document.createElement('td');
-      td.className = 'status-untested';
-      var statusSpan = document.createElement('div');
-      statusSpan.className = 'cell-status';
-      statusSpan.textContent = '–';
-      var confirmBtn = document.createElement('button');
-      confirmBtn.className = 'cell-confirm';
-      confirmBtn.textContent = '❔';
-      confirmBtn.title = 'Click after listening: cycles Unconfirmed → Audible → Silent';
+      var td = document.createElement('td'); td.className = 'status-untested';
+      var statusSpan = document.createElement('div'); statusSpan.className = 'cell-status'; statusSpan.textContent = '–';
+      var confirmBtn = document.createElement('button'); confirmBtn.className = 'cell-confirm';
+      confirmBtn.textContent = '❔'; confirmBtn.title = 'Click after listening: Unconfirmed → 🔊 Audible → 🔇 Silent';
       confirmBtn.style.display = 'none';
-      var confirmState = 0; // 0=unconfirmed,1=audible,2=silent
+      var cState = 0;
       confirmBtn.addEventListener('click', function () {
-        confirmState = (confirmState + 1) % 3;
-        if (confirmState === 0) { confirmBtn.textContent = '❔'; td.classList.remove('confirm-audible', 'confirm-silent'); }
-        else if (confirmState === 1) { confirmBtn.textContent = '🔊'; td.classList.remove('confirm-silent'); td.classList.add('confirm-audible'); }
+        cState = (cState + 1) % 3;
+        if (cState === 0) { confirmBtn.textContent = '❔'; td.classList.remove('confirm-audible', 'confirm-silent'); }
+        else if (cState === 1) { confirmBtn.textContent = '🔊'; td.classList.remove('confirm-silent'); td.classList.add('confirm-audible'); }
         else { confirmBtn.textContent = '🔇'; td.classList.remove('confirm-audible'); td.classList.add('confirm-silent'); }
       });
-      td.appendChild(statusSpan);
-      td.appendChild(confirmBtn);
+      td.appendChild(statusSpan); td.appendChild(confirmBtn);
       td.title = 'Click cell to (re)run this test';
-      td.addEventListener('click', function (e) {
-        if (e.target === confirmBtn) return;
-        runPlaybackTest(rec, pm);
-      });
+      td.addEventListener('click', function (e) { if (e.target === confirmBtn) return; runPlaybackTest(rec, pm); });
       tr.appendChild(td);
       rec.matrixCells[pm.id] = { td: td, statusSpan: statusSpan, confirmBtn: confirmBtn };
     });
     tbody.appendChild(tr);
   }
 
-  var statusGlyph = { pass: '✅', fail: '❌', unsupported: '🚫', timeout: '⏱', untested: '–' };
-
   function runPlaybackTest(rec, pm) {
     var cell = rec.matrixCells[pm.id];
-    cell.statusSpan.textContent = '⏳';
-    cell.td.className = 'status-untested';
-    log('Testing playback "' + pm.name + '" with recording from "' + rec.methodName + '"…');
+    cell.statusSpan.textContent = '⏳'; cell.td.className = 'status-untested';
+    log('Testing "' + pm.name + '" on "' + rec.methodName + '"…');
     return pm.run(rec.blob).then(function (result) {
       cell.statusSpan.textContent = statusGlyph[result.status] || result.status;
       cell.td.className = 'status-' + result.status;
-      cell.confirmBtn.style.display = (result.status === 'pass') ? 'inline-block' : 'none';
+      cell.confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
       cell.td.title = result.detail || '';
-      var level = result.status === 'pass' ? 'ok' : (result.status === 'fail' ? 'err' : 'info');
-      log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), level);
+      log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
       return result;
     });
   }
@@ -942,29 +691,25 @@
     var chain = Promise.resolve();
     playbackMethods.forEach(function (pm) {
       chain = chain.then(function () { return runPlaybackTest(rec, pm); })
-                    .then(function () { return new Promise(function (r) { setTimeout(r, 300); }); });
+                   .then(function () { return new Promise(function (r) { setTimeout(r, 300); }); });
     });
     return chain;
   }
 
   document.getElementById('run-full-matrix').addEventListener('click', function () {
     if (recordings.length === 0) { log('No recordings to test — record something first', 'warn'); return; }
-    log('Running full matrix: ' + recordings.length + ' recordings × ' + playbackMethods.length + ' playback methods', 'info');
+    log('Running full matrix: ' + recordings.length + ' × ' + playbackMethods.length, 'info');
     var chain = Promise.resolve();
-    recordings.forEach(function (rec) {
-      chain = chain.then(function () { return runAllPlaybackForRecording(rec); });
-    });
-    chain.then(function () { log('Full matrix run complete', 'ok'); });
+    recordings.forEach(function (rec) { chain = chain.then(function () { return runAllPlaybackForRecording(rec); }); });
+    chain.then(function () { log('Full matrix complete', 'ok'); });
   });
 
   document.getElementById('clear-matrix').addEventListener('click', function () {
     recordings.forEach(function (rec) {
       Object.keys(rec.matrixCells).forEach(function (pid) {
         var cell = rec.matrixCells[pid];
-        cell.statusSpan.textContent = '–';
-        cell.td.className = 'status-untested';
-        cell.confirmBtn.style.display = 'none';
-        cell.confirmBtn.textContent = '❔';
+        cell.statusSpan.textContent = '–'; cell.td.className = 'status-untested';
+        cell.confirmBtn.style.display = 'none'; cell.confirmBtn.textContent = '❔';
         cell.td.classList.remove('confirm-audible', 'confirm-silent');
       });
     });
@@ -980,21 +725,15 @@
       return { method: rec.methodName, mimeType: rec.mimeType, sizeKb: rec.sizeKb, capturedAt: rec.ts, playbackResults: results };
     });
     var json = JSON.stringify({ url: location.href, userAgent: navigator.userAgent, exportedAt: new Date().toISOString(), recordings: data }, null, 2);
-    var blob = new Blob([json], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'audio-test-results.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    var blob = new Blob([json], { type: 'application/json' }), url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'audio-test-results.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
     log('Exported results JSON', 'ok');
   });
 
-  log('Audio API Test Suite loaded. Protocol: ' + location.protocol + (window.isSecureContext ? ' (secure context ✅)' : ' (NOT a secure context ⚠️ — getUserMedia will fail)'), 'info');
+  log('Audio API Test Suite loaded. Protocol: ' + location.protocol + (window.isSecureContext ? ' (secure context ✅)' : ' (NOT secure ⚠️ — getUserMedia will fail)'), 'info');
 })();
 </script>
-
 </body>
 </html>
