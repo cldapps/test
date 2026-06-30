@@ -73,6 +73,15 @@
   .log-info { color: #9cf; }
   .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
   .empty-note { color: #888; font-size: 12px; padding: 8px; }
+  .qt-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
+    border-bottom: 1px solid #333;
+  }
+  .qt-row:last-child { border-bottom: none; }
+  .qt-name { flex: 1; font-size: 12.5px; }
+  .qt-status { min-width: 26px; font-size: 15px; text-align: center; }
+  .qt-detail { font-size: 10.5px; color: #999; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qt-confirm { display: none; }
 </style>
 </head>
 <body>
@@ -96,6 +105,12 @@
     <button id="clear-recordings" class="danger">Clear all recordings</button>
   </div>
   <div id="recordings-list"><div class="empty-note">No recordings yet — use a method above.</div></div>
+</div>
+
+<h2>Quick Player Test <span style="color:#888;font-weight:normal;">(tests the last recording on each player, one click at a time)</span></h2>
+<div class="panel">
+  <div class="sub" id="quick-test-target">No recording yet — record something above first.</div>
+  <div id="quick-test-list"></div>
 </div>
 
 <h2>Compatibility Matrix</h2>
@@ -684,6 +699,7 @@
   // ───────────────────────── Recording cards UI ─────────────────────────
   var recCardsEl = document.getElementById('rec-cards');
   var recordings = []; // { id, methodId, methodName, blob, url, mimeType, sizeKb, ts, matrixCells:{} }
+  var lastRecording = null;
 
   recordingMethods.forEach(function (method) {
     var card = document.createElement('div');
@@ -720,6 +736,60 @@
     });
   });
 
+  // ───────────────────────── Quick Player Test UI ─────────────────────────
+  var quickTargetEl = document.getElementById('quick-test-target');
+  var quickListEl = document.getElementById('quick-test-list');
+
+  function renderQuickTest() {
+    if (!lastRecording) {
+      quickTargetEl.textContent = 'No recording yet — record something above first.';
+      quickListEl.innerHTML = '';
+      return;
+    }
+    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName + ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
+    quickListEl.innerHTML = '';
+    playbackMethods.forEach(function (pm) {
+      var row = document.createElement('div');
+      row.className = 'qt-row';
+      row.innerHTML =
+        '<div class="qt-name">' + pm.name + '</div>' +
+        '<div class="qt-detail"></div>' +
+        '<div class="qt-status">–</div>' +
+        '<button class="qt-confirm">❔</button>' +
+        '<button class="qt-test-btn">▶ Test</button>';
+      var detailEl = row.querySelector('.qt-detail');
+      var statusEl = row.querySelector('.qt-status');
+      var confirmBtn = row.querySelector('.qt-confirm');
+      var testBtn = row.querySelector('.qt-test-btn');
+      var confirmState = 0;
+
+      confirmBtn.addEventListener('click', function () {
+        confirmState = (confirmState + 1) % 3;
+        if (confirmState === 0) confirmBtn.textContent = '❔';
+        else if (confirmState === 1) confirmBtn.textContent = '🔊';
+        else confirmBtn.textContent = '🔇';
+      });
+
+      testBtn.addEventListener('click', function () {
+        var rec = lastRecording; // capture at click time
+        testBtn.disabled = true;
+        statusEl.textContent = '⏳';
+        detailEl.textContent = '';
+        log('Quick test: "' + pm.name + '" on last recording (' + rec.methodName + ')');
+        pm.run(rec.blob).then(function (result) {
+          statusEl.textContent = statusGlyph[result.status] || result.status;
+          detailEl.textContent = result.detail || '';
+          detailEl.title = result.detail || '';
+          confirmBtn.style.display = (result.status === 'pass') ? 'inline-block' : 'none';
+          var level = result.status === 'pass' ? 'ok' : (result.status === 'fail' ? 'err' : 'info');
+          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), level);
+        }).finally(function () { testBtn.disabled = false; });
+      });
+
+      quickListEl.appendChild(row);
+    });
+  }
+
   // ───────────────────────── Recordings list UI ─────────────────────────
   var recordingsListEl = document.getElementById('recordings-list');
   var matrixTableEl = document.getElementById('matrix-table');
@@ -739,8 +809,10 @@
       matrixCells: {}
     };
     recordings.push(rec);
+    lastRecording = rec;
     renderRecordingsList();
     addMatrixRow(rec);
+    renderQuickTest();
   }
 
   function renderRecordingsList() {
@@ -782,7 +854,9 @@
   document.getElementById('clear-recordings').addEventListener('click', function () {
     recordings.forEach(function (rec) { URL.revokeObjectURL(rec.url); });
     recordings = [];
+    lastRecording = null;
     renderRecordingsList();
+    renderQuickTest();
     matrixTableEl.innerHTML = '';
     log('Cleared all recordings and matrix', 'info');
   });
