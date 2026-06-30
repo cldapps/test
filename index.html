@@ -2,738 +2,1252 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Audio API Test Suite — AgentMae</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b0b16">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>IPTV Lite</title>
 <style>
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0; background: #1e1e1e; color: #eee;
-    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    font-size: 13px;
-  }
-  body { padding: 10px; }
-  h1 { font-size: 16px; margin: 0 0 4px 0; }
-  h2 { font-size: 13px; margin: 18px 0 6px 0; color: #8ab4f8; border-bottom: 1px solid #333; padding-bottom: 4px; }
-  .sub { color: #999; font-size: 11px; margin-bottom: 10px; }
-  .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-  .env-grid { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12px; }
-  .env-grid .k { color: #bbb; }
-  .ok { color: #4caf50; font-weight: bold; }
-  .bad { color: #f44336; font-weight: bold; }
-  .warn { color: #ffb300; font-weight: bold; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-  .card {
-    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .card .cat { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .03em; }
-  .card .name { font-size: 12.5px; font-weight: 600; }
-  .card .status { font-size: 11px; min-height: 14px; color: #aaa; }
-  button {
-    background: #3b3b3b; color: #fff; border: 1px solid #4a4a4a; border-radius: 6px;
-    padding: 6px 8px; font-size: 12px; cursor: pointer;
-  }
-  button:hover { background: #474747; }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: #3b82f6; border-color: #3b82f6; }
-  button.primary:hover { background: #2f6fd6; }
-  button.danger { background: #5a2a2a; border-color: #7a3a3a; }
-  .rec-row {
-    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
-    margin-bottom: 8px; font-size: 12px;
-  }
-  .rec-row .meta { color: #999; font-size: 11px; margin: 2px 0 6px 0; }
-  .rec-row audio { width: 100%; height: 30px; margin-bottom: 6px; }
-  .rec-row .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
-  table.matrix { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 11px; }
-  table.matrix th, table.matrix td {
-    border: 1px solid #3a3a3a; padding: 4px 6px; text-align: center; white-space: nowrap;
-  }
-  table.matrix th { background: #2c2c2c; position: sticky; top: 0; }
-  table.matrix th.rowhead, table.matrix td.rowhead {
-    text-align: left; position: sticky; left: 0; background: #262626; max-width: 220px;
-    white-space: normal; font-weight: 600;
-  }
-  .matrix-wrap { overflow: auto; max-height: 400px; border: 1px solid #3a3a3a; border-radius: 6px; }
-  .cell-status { font-size: 14px; }
-  .cell-confirm { font-size: 11px; margin-top: 2px; padding: 1px 4px; }
-  .status-pass { background: #1b3a1f; }
-  .status-fail { background: #3a1b1b; }
-  .status-unsupported { background: #2a2a3a; }
-  .status-timeout { background: #3a341b; }
-  .status-untested { background: transparent; }
-  .confirm-audible { outline: 2px solid #4caf50; }
-  .confirm-silent { outline: 2px solid #f44336; }
-  #log {
-    background: #111; border: 1px solid #3a3a3a; border-radius: 6px; padding: 6px;
-    height: 160px; overflow-y: auto; font-family: monospace; font-size: 11px; white-space: pre-wrap;
-  }
-  .log-err { color: #f88; }
-  .log-ok { color: #8f8; }
-  .log-info { color: #9cf; }
-  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-  .empty-note { color: #888; font-size: 12px; padding: 8px; }
-  .qt-row {
-    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
-    border-bottom: 1px solid #333;
-  }
-  .qt-row:last-child { border-bottom: none; }
-  .qt-name { flex: 1; font-size: 12.5px; }
-  .qt-status { min-width: 26px; font-size: 15px; text-align: center; }
-  .qt-detail { font-size: 10.5px; color: #999; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ═══════════════════════════════════════════
+   IPTV Lite — simple flat dark UI
+   One accent color, no blur, no gradients.
+   Built for Cloud Phone D-pad navigation.
+═══════════════════════════════════════════ */
+:root {
+  --bg:        #0b0b16;
+  --bg-soft:   #12111f;
+  --panel:     rgba(255,255,255,0.05);
+  --border:    rgba(255,255,255,0.10);
+  --accent:    #7c5cff;
+  --accent-dim:rgba(124,92,255,0.18);
+
+  --txt:       #ececf5;
+  --txt-dim:   #9a96b4;
+  --txt-mute:  #6b6680;
+
+  --danger:    #ff6b81;
+  --warn:      #ffb454;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+#app { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
+
+.screen { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+.screen.active { display: flex; }
+
+/* ══════════════════════════════
+   HEADER
+══════════════════════════════ */
+.app-header {
+  background: var(--bg-soft);
+  border-bottom: 2px solid var(--accent);
+  padding: 0 10px;
+  height: 30px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.app-header-title {
+  font-size: 13px; font-weight: 700;
+  color: var(--txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 70%;
+}
+.app-header-badge {
+  font-size: 10px; font-weight: 500;
+  color: var(--txt-mute);
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════ */
+#loginScreen { padding: 0; justify-content: flex-start; overflow-y: auto; }
+
+.login-hero { padding: 22px 10px 14px; text-align: center; }
+.logo {
+  font-size: 26px; font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+.logo-sub {
+  font-size: 10px; font-weight: 600;
+  color: var(--txt-mute);
+  letter-spacing: 3px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.login-form { padding: 4px 12px 10px; }
+
+label {
+  display: block;
+  font-size: 10px; font-weight: 600;
+  color: var(--txt-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 10px; margin-bottom: 4px;
+}
+input {
+  width: 100%;
+  font-size: 13px;
+  padding: 8px 9px;
+  background: var(--panel);
+  color: var(--txt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  caret-color: var(--accent);
+}
+input::placeholder { color: var(--txt-mute); }
+input:focus { border-color: var(--accent); }
+
+/* ══════════════════════════════
+   BUTTONS
+══════════════════════════════ */
+.btn {
+  display: block; width: 100%;
+  padding: 9px 10px;
+  background: var(--panel);
+  color: var(--txt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+}
+#loginBtn { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.focused { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+.btn.small-btn {
+  font-size: 10.5px; font-weight: 500;
+  padding: 6px 10px;
+  color: var(--txt-dim);
+  background: transparent;
+  border-color: rgba(255,255,255,0.08);
+  margin-top: 4px;
+}
+.btn.small-btn.focused { border-color: var(--accent); color: var(--txt); background: var(--panel); }
+
+/* ══════════════════════════════
+   LISTS
+══════════════════════════════ */
+ul { list-style: none; flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px; }
+ul::-webkit-scrollbar { width: 2px; }
+ul::-webkit-scrollbar-thumb { background: var(--border); }
+
+li {
+  position: relative;
+  padding: 8px 10px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  color: var(--txt-dim);
+  border-left: 3px solid transparent;
+}
+li .slot {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 17px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 10.5px; font-weight: 700;
+  flex-shrink: 0;
+}
+li.focused {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+  color: var(--txt);
+}
+li.empty { color: var(--txt-mute); font-style: italic; font-weight: 400; cursor: default; }
+
+/* ══════════════════════════════
+   STATUS / HINT
+══════════════════════════════ */
+.status { font-size: 11px; color: var(--danger); padding: 5px 10px; min-height: 18px; font-weight: 500; }
+.hint {
+  font-size: 10px; color: var(--txt-mute);
+  padding: 6px 10px; line-height: 1.5;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hint b { color: var(--accent); font-weight: 700; }
+
+/* ══════════════════════════════
+   HOME SCREEN
+══════════════════════════════ */
+#homeScreen { overflow: hidden; }
+#homeScreen .fav-area { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; min-height: 0; }
+#homeScreen .home-btns { flex-shrink: 0; padding: 6px 8px 8px; }
+
+/* ══════════════════════════════
+   PLAYER SCREEN
+   NOTE: nothing here uses backdrop-filter/blur. The video is repainting
+   constantly, and any blurred overlay sitting above it has to re-sample
+   the video every frame — that's wasted GPU work on a feature phone and
+   was the source of stutter. Solid, slightly-opaque panels read just as
+   well and cost nothing extra.
+══════════════════════════════ */
+#playerScreen { padding: 0; position: relative; background: #000; }
+#playerScreen video {
+  width: 100%; height: 100%;
+  background: #000; display: block;
+  object-fit: contain;
+}
+#playerScreen video.rotated {
+  position: absolute; top: 50%; left: 50%;
+  width: 100vh; height: 100vw;
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+#playerOverlay {
+  position: absolute; top: 6px; left: 6px; right: 6px;
+  z-index: 10; pointer-events: none;
+  display: flex; gap: 5px; align-items: flex-start; flex-wrap: wrap;
+}
+#playerOverlay span {
+  background: rgba(11,11,22,0.88);
+  border: 1px solid var(--border);
+  color: var(--txt);
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+}
+
+.player-status {
+  position: absolute; inset: 0; z-index: 15;
+  display: none;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px;
+  background: rgba(6,6,12,0.55);
+  color: var(--txt);
+  text-align: center;
+  font-size: 12px; font-weight: 600;
+  padding: 0 20px;
+}
+.player-status.loading, .player-status.error { display: flex; }
+.player-status .spinner {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.18);
+  border-top-color: var(--accent);
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.player-status .err-icon { font-size: 20px; color: var(--warn); }
+.player-status .err-hint { font-size: 10.5px; color: var(--txt-mute); font-weight: 500; }
+
+#toast {
+  position: absolute; bottom: 12px; left: 8px; right: 8px;
+  background: rgba(11,11,22,0.92);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--txt);
+  font-size: 12.5px; font-weight: 600;
+  padding: 7px 12px;
+  text-align: center;
+  z-index: 20; display: none;
+}
+
+/* ══════════════════════════════
+   CHANNEL OSD (in-player zapper)
+══════════════════════════════ */
+#channelOsd {
+  position: absolute; top: 8px; right: 8px; bottom: 8px;
+  width: 60%; max-width: 200px;
+  z-index: 12;
+  display: flex; flex-direction: column;
+  background: rgba(10,9,20,0.94);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  opacity: 0; transform: translateX(8px);
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  overflow: hidden;
+}
+#channelOsd.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.channel-osd-header {
+  flex-shrink: 0;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase;
+  color: var(--txt-mute);
+  padding: 8px 9px 6px;
+  border-bottom: 1px solid var(--border);
+}
+#channelOsdList { flex: 1; overflow-y: auto; padding: 4px; }
+#channelOsdList li { font-size: 12px; padding: 7px 9px; }
+
+/* ══════════════════════════════
+   CONFIRMATION DIALOG
+══════════════════════════════ */
+#confirmDlg {
+  display: none; position: absolute; inset: 0; z-index: 100;
+  background: rgba(4,4,10,0.75);
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px;
+}
+#confirmDlg.active { display: flex; }
+#confirmDlg .dlg-box {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 16px 12px;
+  text-align: center;
+  max-width: 200px;
+  color: var(--txt);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+#confirmDlg .dlg-btns { display: flex; gap: 8px; }
+#confirmDlg .dlg-btn {
+  padding: 6px 20px;
+  font-size: 13px; font-weight: 700;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--txt);
+  cursor: pointer;
+}
+#confirmDlg .dlg-btn.ok { background: var(--accent); border-color: var(--accent); color: #fff; }
+#confirmDlg .dlg-btn.focused { box-shadow: 0 0 0 2px var(--accent-dim); }
 </style>
 </head>
 <body>
+<div id="app">
 
-<h1>🎙 Audio API Test Suite</h1>
-<div class="sub">Tests every recording API × every playback API on this device/browser, so you can see exactly which combinations actually work on Cloud Phone (or wherever this is loaded).</div>
-
-<h2>Environment</h2>
-<div class="panel">
-  <div class="env-grid" id="env-grid"></div>
-</div>
-
-<h2>Recording Methods</h2>
-<div class="panel">
-  <div class="cards" id="rec-cards"></div>
-</div>
-
-<h2>Recordings <span style="color:#888;font-weight:normal;">(captured samples, ready to test playback on)</span></h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="clear-recordings" class="danger">Clear all recordings</button>
+  <!-- CONFIRM DIALOG -->
+  <div id="confirmDlg">
+    <div class="dlg-box" id="confirmMsg"></div>
+    <div class="dlg-btns">
+      <div class="dlg-btn ok" id="confirmOk">YES</div>
+      <div class="dlg-btn" id="confirmNo">NO</div>
+    </div>
   </div>
-  <div id="recordings-list"><div class="empty-note">No recordings yet — use a method above.</div></div>
+
+  <!-- LOGIN SCREEN -->
+  <div class="screen active" id="loginScreen">
+    <div class="login-hero">
+      <div class="logo">IPTV</div>
+      <div class="logo-sub">L I T E</div>
+    </div>
+    <div class="login-form">
+      <label>Server URL</label>
+      <input id="serverInput" type="text" autocomplete="off" placeholder="http://server:port">
+      <label>Username</label>
+      <input id="userInput" type="text" autocomplete="off">
+      <label>Password</label>
+      <input id="passInput" type="password" autocomplete="off">
+      <div class="btn focused" id="loginBtn">Connect</div>
+      <div class="status" id="loginStatus"></div>
+      <div class="hint">Login saved on device — won't ask again next time.</div>
+    </div>
+  </div>
+
+  <!-- HOME / FAVORITES SCREEN -->
+  <div class="screen" id="homeScreen">
+    <div class="app-header">
+      <span class="app-header-title">Favorites</span>
+      <span class="app-header-badge">IPTV Lite</span>
+    </div>
+    <div class="fav-area">
+      <ul id="favList"></ul>
+      <div class="hint" id="favHint"></div>
+    </div>
+    <div class="home-btns">
+      <div class="btn" id="browseBtn">Browse All Channels</div>
+      <div class="btn small-btn" id="logoutBtn">Logout / Switch Account</div>
+    </div>
+  </div>
+
+  <!-- CATEGORY SCREEN -->
+  <div class="screen" id="catScreen">
+    <div class="app-header">
+      <span class="app-header-title">Categories</span>
+      <span class="app-header-badge">&#9664; BACK</span>
+    </div>
+    <ul id="catList"></ul>
+    <div class="status" id="catStatus"></div>
+  </div>
+
+  <!-- CHANNEL SCREEN -->
+  <div class="screen" id="chanScreen">
+    <div class="app-header">
+      <span class="app-header-title" id="chanTitle">CHANNELS</span>
+      <span class="app-header-badge">&#9664; BACK</span>
+    </div>
+    <ul id="chanList"></ul>
+    <div class="status" id="chanStatus"></div>
+    <div class="hint">&#9650;&#9660; navigate &nbsp; &#9654; play &nbsp; Press <b>*#</b> vol</div>
+  </div>
+
+  <!-- PLAYER SCREEN -->
+  <div class="screen" id="playerScreen">
+    <div id="playerOverlay">
+      <span id="nowPlaying"></span>
+      <span id="rotateTag" style="display:none">&#8635; ROTATED</span>
+    </div>
+    <video id="video" playsinline webkit-playsinline x-webkit-airplay="allow"
+      preload="none" tabindex="-1"></video>
+    <div id="playerStatus" class="player-status"></div>
+    <div id="channelOsd">
+      <div class="channel-osd-header">&#9650;&#9660; Change channel</div>
+      <ul id="channelOsdList"></ul>
+    </div>
+    <div id="toast"></div>
+  </div>
+
 </div>
 
-<h2>Quick Player Test <span style="color:#888;font-weight:normal;">(tests the last recording on each player, one click at a time)</span></h2>
-<div class="panel">
-  <div class="sub" id="quick-test-target">No recording yet — record something above first.</div>
-  <div id="quick-test-list"></div>
-</div>
-
-<h2>Compatibility Matrix</h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="run-full-matrix" class="primary">▶ Run full matrix</button>
-    <button id="clear-matrix">Reset matrix statuses</button>
-  </div>
-  <div class="sub">
-    ✅/❌ = the API call itself succeeded/failed without error. Some platforms accept a play() call but produce no actual sound —
-    after a row plays, click the small ❔ button under a cell and listen, then mark 🔊 Audible or 🔇 Silent for the real verdict.
-  </div>
-  <div class="matrix-wrap"><table class="matrix" id="matrix-table"></table></div>
-</div>
-
-<h2>Activity Log</h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="copy-log">Copy log</button>
-    <button id="export-json">Export results JSON</button>
-    <button id="clear-log">Clear log</button>
-  </div>
-  <div id="log"></div>
-</div>
+<!-- HLS.js — required for reliable .m3u8 playback in Chromium (Cloud Phone's
+     server-side Chromium and desktop Chrome alike have no native HLS support;
+     pointing <video src="*.m3u8"> at the stream directly is unreliable). -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
 <script>
-(function () {
-  'use strict';
+/* ═══════════════════════════════════════════
+   IPTV Lite — Cloud Phone optimized
+═══════════════════════════════════════════ */
 
-  // ───────────────────────── Status glyphs (declared first, used everywhere) ─────────────────────────
-  var statusGlyph = { pass: '✅', fail: '❌', unsupported: '🚫', timeout: '⏱', untested: '–' };
+/* ── State ── */
+var state = {
+  server: '', user: '', pass: '',
+  categories: [], channels: [],
+  favorites: {},
+  currentChannel: null,
+  currentChanIndex: -1,
+  videoRotated: false,
+  navStack: []
+};
 
-  // ───────────────────────── Logging ─────────────────────────
-  var logEl = document.getElementById('log');
-  function log(msg, level) {
-    var line = document.createElement('div');
-    line.className = level ? ('log-' + level) : '';
-    var t = new Date().toLocaleTimeString();
-    line.textContent = '[' + t + '] ' + msg;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
+var STORAGE_LOGIN = 'iptvlite_login';
+var STORAGE_FAV   = 'iptvlite_favorites';
+
+/* ── Favorite triple-press tracking ── */
+var favPressState = {};
+var FAV_PRESS_TIMEOUT = 1200;
+
+/* ── Persistence ── */
+function loadLogin() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_LOGIN) || 'null'); } catch(e){ return null; }
+}
+function saveLogin() {
+  try { localStorage.setItem(STORAGE_LOGIN, JSON.stringify({server:state.server,user:state.user,pass:state.pass})); } catch(e){}
+}
+function clearLogin() {
+  try { localStorage.removeItem(STORAGE_LOGIN); } catch(e){}
+}
+function loadFavorites() {
+  try { state.favorites = JSON.parse(localStorage.getItem(STORAGE_FAV) || '{}'); } catch(e){ state.favorites={}; }
+}
+function saveFavorites() {
+  try { localStorage.setItem(STORAGE_FAV, JSON.stringify(state.favorites)); } catch(e){}
+}
+
+/* ── Screen / navigation ── */
+function showScreen(id, pushHistory) {
+  if (pushHistory !== false) {
+    var cur = document.querySelector('.screen.active');
+    if (cur && cur.id !== id) state.navStack.push(cur.id);
   }
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+  document.getElementById(id).classList.add('active');
+}
 
-  document.getElementById('copy-log').addEventListener('click', function () {
-    var text = Array.prototype.map.call(logEl.children, function (el) { return el.textContent; }).join('\n');
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { log('Log copied to clipboard', 'ok'); });
-    } else {
-      log('Clipboard API not available — select and copy manually', 'warn');
-    }
+function goBack() {
+  if (state.navStack.length > 0) {
+    var prev = state.navStack.pop();
+    var screens = document.querySelectorAll('.screen');
+    for (var i = 0; i < screens.length; i++) screens[i].classList.remove('active');
+    document.getElementById(prev).classList.add('active');
+  }
+}
+
+/* ── Unified back handler ──
+   Cloud Phone's Right Soft Key fires a "back" event, which by default calls
+   history.back() — and since this is a single-page app with no real history
+   stack, that fell straight through to closing the widget. We intercept it
+   everywhere and always route to in-app navigation, never exit. */
+function handleBackAction() {
+  if (document.getElementById('confirmDlg').classList.contains('active')) {
+    if (confirmCallback) confirmCallback.no();
+    closeConfirm();
+    return;
+  }
+  if (osdState.open) { cancelChannelOsd(); return; }
+
+  var activeId = document.querySelector('.screen.active').id;
+
+  if (activeId === 'loginScreen') return; // nothing to go back to
+
+  if (activeId === 'playerScreen') { stopPlayer(); return; }
+
+  if (state.navStack.length > 0) { goBack(); return; }
+  /* Home screen with an empty stack: stay put. RSK must never exit the widget. */
+}
+
+window.addEventListener('back', function (e) {
+  e.preventDefault();
+  handleBackAction();
+});
+
+/* ── Toast ── */
+var toastTimer = null;
+function showToast(msg, ms) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.style.display='none'; }, ms || 1800);
+}
+
+/* ── Confirm dialog ── */
+var confirmCallback = null;
+var confirmFocus = 0;
+function showConfirm(msg, onOk, onNo) {
+  document.getElementById('confirmMsg').textContent = msg;
+  confirmCallback = { ok: onOk, no: onNo || function(){} };
+  confirmFocus = 0;
+  updateConfirmFocus();
+  document.getElementById('confirmDlg').classList.add('active');
+}
+function updateConfirmFocus() {
+  document.getElementById('confirmOk').classList.toggle('focused', confirmFocus === 0);
+  document.getElementById('confirmNo').classList.toggle('focused', confirmFocus !== 0);
+}
+function closeConfirm() {
+  document.getElementById('confirmDlg').classList.remove('active');
+  confirmCallback = null;
+}
+document.getElementById('confirmOk').addEventListener('click', function(){
+  if (confirmCallback) confirmCallback.ok();
+  closeConfirm();
+});
+document.getElementById('confirmNo').addEventListener('click', function(){
+  if (confirmCallback) confirmCallback.no();
+  closeConfirm();
+});
+
+/* ── Focus list helper ── */
+function FocusList(container, onSelect) {
+  this.container = container;
+  this.items = [];
+  this.index = 0;
+  this.onSelect = onSelect;
+}
+FocusList.prototype.setItems = function(items) {
+  this.items = items; this.index = 0; this.render();
+};
+FocusList.prototype.render = function() {
+  for (var i = 0; i < this.container.children.length; i++)
+    this.container.children[i].classList.toggle('focused', i === this.index);
+};
+FocusList.prototype.move = function(dir) {
+  if (!this.items.length) return;
+  this.index = (this.index + dir + this.items.length) % this.items.length;
+  this.render();
+  var el = this.container.children[this.index];
+  if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+};
+FocusList.prototype.select = function() {
+  if (this.items.length) this.onSelect(this.items[this.index], this.index);
+};
+
+var catFocus = null, chanFocus = null, favFocus = null;
+var homeBtnFocus = 0;
+
+/* ── API helpers ── */
+function apiUrl(action, extra) {
+  var u = state.server.replace(/\/$/, '') + '/player_api.php?username=' +
+    encodeURIComponent(state.user) + '&password=' + encodeURIComponent(state.pass);
+  if (action) u += '&action=' + action;
+  if (extra)  u += extra;
+  return u;
+}
+function fetchJson(url, cb, errCb) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.timeout = 15000;
+  xhr.onload = function() {
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try { cb(JSON.parse(xhr.responseText)); }
+      catch(e) { errCb('Bad response from server'); }
+    } else { errCb('Server error: ' + xhr.status); }
+  };
+  xhr.onerror   = function(){ errCb('Network error - check URL / WiFi'); };
+  xhr.ontimeout = function(){ errCb('Timed out'); };
+  xhr.send();
+}
+
+/* ── Login ── */
+function attemptLogin(server, user, pass, onSuccess, onFail) {
+  state.server = server; state.user = user; state.pass = pass;
+  fetchJson(apiUrl(null), function(data) {
+    if (data && data.user_info && data.user_info.auth === 1) onSuccess();
+    else onFail('Login failed - check credentials');
+  }, onFail);
+}
+function doLoginFromForm() {
+  var server = document.getElementById('serverInput').value.trim();
+  var user   = document.getElementById('userInput').value.trim();
+  var pass   = document.getElementById('passInput').value.trim();
+  var st     = document.getElementById('loginStatus');
+  if (!server || !user || !pass) { st.textContent = 'Fill in all fields'; return; }
+  if (!/^https?:\/\//i.test(server)) server = 'http://' + server;
+  st.textContent = 'Connecting...';
+  attemptLogin(server, user, pass, function() {
+    saveLogin(); st.textContent = ''; goHome();
+  }, function(msg){ st.textContent = msg; });
+}
+function tryAutoLogin() {
+  var saved = loadLogin();
+  if (!saved || !saved.server || !saved.user || !saved.pass) {
+    showScreen('loginScreen', false); return;
+  }
+  document.getElementById('serverInput').value = saved.server;
+  document.getElementById('userInput').value   = saved.user;
+  document.getElementById('passInput').value   = saved.pass;
+  document.getElementById('loginStatus').textContent = 'Connecting...';
+  attemptLogin(saved.server, saved.user, saved.pass, function() {
+    goHome();
+  }, function(msg) {
+    document.getElementById('loginStatus').textContent = msg + ' (re-enter)';
+    showScreen('loginScreen', false);
   });
-  document.getElementById('clear-log').addEventListener('click', function () { logEl.innerHTML = ''; });
+}
+function logout() {
+  clearLogin();
+  state.server = state.user = state.pass = '';
+  document.getElementById('serverInput').value = '';
+  document.getElementById('userInput').value   = '';
+  document.getElementById('passInput').value   = '';
+  document.getElementById('loginStatus').textContent = '';
+  state.navStack = [];
+  showScreen('loginScreen', false);
+}
 
-  // ───────────────────────── Environment panel ─────────────────────────
-  var envGrid = document.getElementById('env-grid');
-  function envRow(label, ok, detail) {
-    var k = document.createElement('div'); k.className = 'k'; k.textContent = label;
-    var v = document.createElement('div');
-    v.className = ok === true ? 'ok' : (ok === false ? 'bad' : 'warn');
-    v.textContent = (detail !== undefined ? detail : (ok ? 'yes' : 'no'));
-    envGrid.appendChild(k); envGrid.appendChild(v);
-  }
+/* ── Home / Favorites ── */
+function goHome() {
+  state.navStack = [];
+  renderFavorites();
+  homeBtnFocus = 0;
+  showScreen('homeScreen', false);
+  updateHomeFocus();
+}
 
-  function renderEnv() {
-    envGrid.innerHTML = '';
-    envRow('URL', true, location.href);
-    envRow('Protocol', location.protocol === 'https:' || location.hostname === 'localhost', location.protocol);
-    envRow('Secure context (window.isSecureContext)', !!window.isSecureContext);
-    envRow('navigator.mediaDevices', !!(navigator.mediaDevices));
-    envRow('navigator.mediaDevices.getUserMedia', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-    envRow('MediaRecorder API', typeof MediaRecorder !== 'undefined');
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
-      ['audio/webm;codecs=opus', 'audio/mp4;codecs=mp4a.40.2', 'audio/ogg;codecs=opus', 'audio/wav'].forEach(function (m) {
-        envRow('  isTypeSupported(' + m + ')', MediaRecorder.isTypeSupported(m));
-      });
-    }
-    envRow('AudioContext (Web Audio API)', !!(window.AudioContext || window.webkitAudioContext));
-    envRow('MediaSource Extensions', typeof MediaSource !== 'undefined');
-    envRow('SpeechRecognition (dictation)', !!(window.SpeechRecognition || window.webkitSpeechRecognition));
-    envRow('navigator.volumeManager (Cloud Phone)', !!navigator.volumeManager);
-    envRow('navigator.hasFeature (Cloud Phone)', typeof navigator.hasFeature === 'function');
-    if (typeof navigator.hasFeature === 'function') {
-      ['AudioCapture', 'AudioPlayback', 'AudioSeek', 'AudioUpload'].forEach(function (feature) {
-        var k = document.createElement('div'); k.className = 'k'; k.textContent = '  hasFeature("' + feature + '")';
-        var v = document.createElement('div'); v.className = 'warn'; v.textContent = 'checking…';
-        envGrid.appendChild(k); envGrid.appendChild(v);
-        navigator.hasFeature(feature).then(function (s) { v.className = s ? 'ok' : 'bad'; v.textContent = s ? 'yes' : 'no'; })
-          .catch(function (e) { v.className = 'bad'; v.textContent = 'error: ' + e.message; });
-      });
-    }
-  }
-  renderEnv();
+function renderFavorites() {
+  var ul = document.getElementById('favList');
+  ul.innerHTML = '';
+  var hintEl = document.getElementById('favHint');
 
-  // ───────────────────────── Shared helpers ─────────────────────────
-  function blobArrayBuffer(blob) {
-    if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
-    return new Promise(function (resolve, reject) {
-      var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.onerror = reject; r.readAsArrayBuffer(blob);
-    });
-  }
-  function blobToDataURL(blob) {
-    return new Promise(function (resolve, reject) {
-      var r = new FileReader(); r.onloadend = function () { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(blob);
-    });
-  }
-
-  function raceOutcome(mediaEl, timeoutMs) {
-    timeoutMs = timeoutMs || 6000;
-    return new Promise(function (resolve) {
-      var settled = false;
-      function cleanup() { clearTimeout(timer); mediaEl.removeEventListener('playing', onPlaying); mediaEl.removeEventListener('error', onError); }
-      function onPlaying() { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'playing event fired' }); }
-      function onError() {
-        if (settled) return; settled = true; cleanup();
-        var err = mediaEl.error;
-        resolve({ status: 'fail', detail: err ? ('MediaError code ' + err.code) : 'error event fired' });
-      }
-      var timer = setTimeout(function () {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'timeout', detail: 'no playing/error event within ' + timeoutMs + 'ms' });
-      }, timeoutMs);
-      mediaEl.addEventListener('playing', onPlaying);
-      mediaEl.addEventListener('error', onError);
-      var p;
-      try { p = mediaEl.play(); } catch (err) {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'fail', detail: (err && err.message) ? err.message : String(err) }); return;
-      }
-      if (p && typeof p.catch === 'function') {
-        p.catch(function (err) {
-          if (settled) return; settled = true; cleanup();
-          resolve({ status: 'fail', detail: (err && err.name) ? (err.name + ': ' + err.message) : String(err) });
-        });
-      }
-    });
-  }
-
-  // ───────────────────────── WAV encoder ─────────────────────────
-  function encodeWAV(samples, sampleRate) {
-    var buffer = new ArrayBuffer(44 + samples.length * 2);
-    var view = new DataView(buffer);
-    function ws(offset, str) { for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
-    ws(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
-    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, 'data');
-    view.setUint32(40, samples.length * 2, true);
-    var offset = 44;
-    for (var i = 0; i < samples.length; i++, offset += 2) {
-      var s = Math.max(-1, Math.min(1, samples[i]));
-      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    }
-    return new Blob([view], { type: 'audio/wav' });
-  }
-
-  // ───────────────────────── Recording implementations ─────────────────────────
-  function recordViaMediaRecorder(mimeType, durationMs) {
-    durationMs = durationMs || 4000;
-    return new Promise(function (resolve, reject) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available (insecure context or unsupported browser)')); return; }
-      if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
-      if (mimeType && MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)) { reject(new Error('MediaRecorder.isTypeSupported() is false for: ' + mimeType)); return; }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-        var recorder;
-        try { recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream); }
-        catch (err) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(err); return; }
-        var chunks = [];
-        recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
-        recorder.onerror = function (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
-        recorder.onstop = function () {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' }));
-        };
-        recorder.start();
-        setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
-      }).catch(reject);
-    });
-  }
-
-  function recordViaWebAudioPCM(durationMs) {
-    durationMs = durationMs || 4000;
-    return new Promise(function (resolve, reject) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) { reject(new Error('AudioContext not available on this platform')); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available')); return; }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-        var ctx; try { ctx = new AC(); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(e); return; }
-        var source, processor, mute;
-        try {
-          source = ctx.createMediaStreamSource(stream);
-          processor = ctx.createScriptProcessor(4096, 1, 1);
-          mute = ctx.createGain(); mute.gain.value = 0;
-        } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); try { ctx.close(); } catch (_) {} reject(e); return; }
-        var chunks = [], finished = false;
-        processor.onaudioprocess = function (e) { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
-        source.connect(processor); processor.connect(mute); mute.connect(ctx.destination);
-        function finish() {
-          if (finished) return; finished = true;
-          try { processor.disconnect(); } catch (_) {} try { source.disconnect(); } catch (_) {}
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          var total = chunks.reduce(function (a, c) { return a + c.length; }, 0);
-          if (total === 0) { try { ctx.close(); } catch (_) {} reject(new Error('No samples captured — ScriptProcessorNode likely unsupported')); return; }
-          var merged = new Float32Array(total), off = 0;
-          chunks.forEach(function (c) { merged.set(c, off); off += c.length; });
-          var blob = encodeWAV(merged, ctx.sampleRate);
-          try { ctx.close(); } catch (_) {} resolve(blob);
-        }
-        setTimeout(finish, durationMs);
-      }).catch(reject);
-    });
-  }
-
-  function recordViaFileInput(useCapture) {
-    return new Promise(function (resolve, reject) {
-      var input = document.createElement('input');
-      input.type = 'file'; input.accept = 'audio/*';
-      if (useCapture) input.setAttribute('capture', 'microphone');
-      input.style.display = 'none'; document.body.appendChild(input);
-      var settled = false;
-      input.addEventListener('change', function () {
-        if (settled) return; settled = true;
-        var file = input.files && input.files[0]; document.body.removeChild(input);
-        if (!file) { reject(new Error('No file selected (cancelled)')); return; }
-        resolve(file);
-      }, { once: true });
-      input.addEventListener('cancel', function () {
-        if (settled) return; settled = true; document.body.removeChild(input); reject(new Error('File dialog cancelled'));
-      }, { once: true });
-      input.click();
-    });
-  }
-
-  // ── Recording methods: 5 primary + 3 "known unsupported" probes — no duplicates ──
-  var recordingMethods = [
-    { id: 'mr-webm-opus',  name: 'MediaRecorder — WebM/Opus',                     cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
-    { id: 'mr-default',    name: 'MediaRecorder — Browser Default',                cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder(null); } },
-    { id: 'webaudio-pcm',  name: 'Web Audio PCM → WAV (ScriptProcessorNode)',      cat: 'getUserMedia + Web Audio',        run: function () { return recordViaWebAudioPCM(); } },
-    { id: 'native-capture',name: 'Native System Recorder (capture=microphone)',    cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(true); } },
-    { id: 'file-upload',   name: 'Audio File Upload (no capture)',                 cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(false); } },
-    { id: 'mr-mp4-aac',   name: 'MediaRecorder — MP4/AAC ⚠️ known unsupported',  cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
-    { id: 'mr-ogg-opus',  name: 'MediaRecorder — Ogg/Opus ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
-    { id: 'mr-wav',       name: 'MediaRecorder — WAV ⚠️ known unsupported',       cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/wav'); } }
-  ];
-
-  // ───────────────────────── Playback implementations ─────────────────────────
-  function playAudioElementBlobUrl(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playAudioElementDataUri(blob) {
-    return blobToDataURL(blob).then(function (dataUrl) {
-      var audio = document.createElement('audio');
-      audio.style.display = 'none'; document.body.appendChild(audio); audio.src = dataUrl;
-      return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); });
-    });
-  }
-  function playJsAudioObject(blob) {
-    var url = URL.createObjectURL(blob), audio = new Audio(url);
-    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
-  }
-  function playAudioSourceElement(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio'), source = document.createElement('source');
-    audio.style.display = 'none'; source.src = url; source.type = blob.type || 'audio/webm';
-    audio.appendChild(source); document.body.appendChild(audio); audio.load();
-    return raceOutcome(audio).finally(function () { audio.pause(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playViaWebAudioDecode(blob) {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return Promise.resolve({ status: 'unsupported', detail: 'AudioContext not available' });
-    var ctx = new AC();
-    return blobArrayBuffer(blob).then(function (ab) {
-      return new Promise(function (res, rej) {
-        var p = ctx.decodeAudioData(ab.slice(0), res, rej);
-        if (p && typeof p.then === 'function') p.then(res, rej);
-      });
-    }).then(function (audioBuf) {
-      var src = ctx.createBufferSource(); src.buffer = audioBuf; src.connect(ctx.destination); src.start(0);
-      return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
-        return { status: 'pass', detail: 'decoded & started (' + audioBuf.duration.toFixed(2) + 's) — confirm audibly' };
-      });
-    }).catch(function (e) { return { status: 'fail', detail: (e && e.message) ? e.message : String(e) }; })
-      .finally(function () { setTimeout(function () { try { ctx.close(); } catch (_) {} }, 4000); });
-  }
-  function playViaVideoElement(blob) {
-    var url = URL.createObjectURL(blob), video = document.createElement('video');
-    video.style.display = 'none'; document.body.appendChild(video); video.src = url;
-    return raceOutcome(video).finally(function () { video.pause(); document.body.removeChild(video); URL.revokeObjectURL(url); });
-  }
-  function playViaIframe(blob) {
-    var url = URL.createObjectURL(blob);
-    return new Promise(function (resolve) {
-      var settled = false, iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      var timer = setTimeout(function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'timeout', detail: 'iframe did not fire load/error within 6s' }); }, 6000);
-      function cleanup() { clearTimeout(timer); document.body.removeChild(iframe); URL.revokeObjectURL(url); }
-      iframe.onload = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'iframe loaded native player — confirm audibly' }); };
-      iframe.onerror = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'fail', detail: 'iframe error event' }); };
-      iframe.src = url; document.body.appendChild(iframe);
-    });
-  }
-  function playViaMediaSource(blob) {
-    if (typeof MediaSource === 'undefined') return Promise.resolve({ status: 'unsupported', detail: 'MediaSource is not defined' });
-    return new Promise(function (resolve) {
-      var settled = false, mediaSource, audio, url, timer;
-      function finish(result) {
-        if (settled) return; settled = true; clearTimeout(timer);
-        try { audio.pause(); } catch (_) {} try { document.body.removeChild(audio); } catch (_) {} try { URL.revokeObjectURL(url); } catch (_) {}
-        resolve(result);
-      }
-      try {
-        mediaSource = new MediaSource(); audio = document.createElement('audio'); audio.style.display = 'none';
-        document.body.appendChild(audio); url = URL.createObjectURL(mediaSource); audio.src = url;
-        timer = setTimeout(function () { finish({ status: 'timeout', detail: 'sourceopen/playing not reached within 6s' }); }, 6000);
-        mediaSource.addEventListener('sourceopen', function () {
-          try {
-            var mime = blob.type || 'audio/webm;codecs=opus';
-            if (!MediaSource.isTypeSupported(mime)) { finish({ status: 'unsupported', detail: 'MediaSource.isTypeSupported() false for ' + mime }); return; }
-            var sb = mediaSource.addSourceBuffer(mime);
-            blobArrayBuffer(blob).then(function (ab) {
-              sb.addEventListener('updateend', function () { try { mediaSource.endOfStream(); } catch (_) {} }, { once: true });
-              sb.appendBuffer(ab); raceOutcome(audio).then(finish);
-            }).catch(function (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); });
-          } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
-        }, { once: true });
-      } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
-    });
-  }
-
-  // Cloud Phone audio channel unlock
-  function unlockCloudPhoneAudioChannel() {
-    if (!window._testSuiteAudioCtx) {
-      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
-    }
-    if (window._testSuiteAudioCtx && window._testSuiteAudioCtx.state === 'suspended') {
-      try { window._testSuiteAudioCtx.resume(); } catch (_) {}
-    }
-    if (navigator.volumeManager && navigator.volumeManager.requestUp) { try { navigator.volumeManager.requestUp(); } catch (_) {} }
-  }
-  function playAudioElementBlobUrlUnlocked(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playJsAudioObjectUnlocked(blob) {
-    var url = URL.createObjectURL(blob), audio = new Audio(url);
-    unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
-  }
-  function playAudioElementUnlockThenPlay(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    audio.addEventListener('play', unlockCloudPhoneAudioChannel, { once: true });
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-
-  function wrapPlayback(fn) {
-    return function (blob) {
-      return Promise.resolve().then(function () { return fn(blob); })
-        .catch(function (err) { return { status: 'fail', detail: (err && err.message) ? err.message : String(err) }; });
-    };
-  }
-
-  // ── Playback methods: plain-text names (no HTML tags — they go into textContent) ──
-  var playbackMethods = [
-    { id: 'audio-bloburl',        name: 'audio element + Blob URL',                         run: wrapPlayback(playAudioElementBlobUrl) },
-    { id: 'audio-bloburl-unlock', name: 'audio element + Blob URL + Unlock (pre-play)',      run: wrapPlayback(playAudioElementBlobUrlUnlocked) },
-    { id: 'audio-unlock-onplay',  name: 'audio element + Unlock on "play" event (app.js)',   run: wrapPlayback(playAudioElementUnlockThenPlay) },
-    { id: 'audio-datauri',        name: 'audio element + Data URI',                          run: wrapPlayback(playAudioElementDataUri) },
-    { id: 'js-audio-obj',         name: 'new Audio() + Blob URL',                            run: wrapPlayback(playJsAudioObject) },
-    { id: 'js-audio-obj-unlock',  name: 'new Audio() + Blob URL + Unlock',                   run: wrapPlayback(playJsAudioObjectUnlocked) },
-    { id: 'audio-source',         name: 'audio + child source element',                      run: wrapPlayback(playAudioSourceElement) },
-    { id: 'webaudio-decode',      name: 'Web Audio decodeAudioData',                         run: wrapPlayback(playViaWebAudioDecode) },
-    { id: 'video-element',        name: 'video element (audio-only blob)',                   run: wrapPlayback(playViaVideoElement) },
-    { id: 'iframe-embed',         name: 'iframe native player',                              run: wrapPlayback(playViaIframe) },
-    { id: 'media-source',         name: 'MediaSource Extensions',                            run: wrapPlayback(playViaMediaSource) }
-  ];
-
-  // ───────────────────────── Recording cards UI ─────────────────────────
-  var recCardsEl = document.getElementById('rec-cards');
-  var recordings = [];
-  var lastRecording = null;
-
-  recordingMethods.forEach(function (method) {
-    var card = document.createElement('div'); card.className = 'card';
-    // Use textContent for all user-visible strings to avoid HTML injection issues
-    var catEl = document.createElement('div'); catEl.className = 'cat'; catEl.textContent = method.cat;
-    var nameEl = document.createElement('div'); nameEl.className = 'name'; nameEl.textContent = method.name;
-    var statusEl = document.createElement('div'); statusEl.className = 'status'; statusEl.textContent = 'idle';
-    var btn = document.createElement('button'); btn.textContent = 'Record';
-    card.appendChild(catEl); card.appendChild(nameEl); card.appendChild(statusEl); card.appendChild(btn);
-    recCardsEl.appendChild(card);
-
-    btn.addEventListener('click', function () {
-      btn.disabled = true;
-      var isFile = (method.id === 'native-capture' || method.id === 'file-upload');
-      statusEl.textContent = isFile ? 'waiting for file dialog…' : 'recording (4s)…';
-      statusEl.className = 'status warn';
-      log('Starting: ' + method.name);
-      method.run().then(function (blob) {
-        statusEl.className = 'status ok';
-        statusEl.textContent = 'OK — ' + (blob.type || 'unknown') + ', ' + (blob.size / 1024).toFixed(1) + ' KB';
-        log('OK via "' + method.name + '" type=' + blob.type + ' size=' + blob.size + 'B', 'ok');
-        addRecording(method, blob);
-      }).catch(function (err) {
-        statusEl.className = 'status bad';
-        var msg = (err && err.message) ? err.message : String(err);
-        statusEl.textContent = 'FAILED — ' + msg;
-        log('FAILED "' + method.name + '": ' + msg, 'err');
-      }).finally(function () { btn.disabled = false; });
-    });
+  var addedSlots = [];
+  var slots = ['1','2','3','4','5','6','7','8','9','0'];
+  slots.forEach(function(slot) {
+    if (state.favorites[slot]) addedSlots.push(slot);
   });
 
-  // ───────────────────────── Quick Player Test UI ─────────────────────────
-  var quickTargetEl = document.getElementById('quick-test-target');
-  var quickListEl = document.getElementById('quick-test-list');
+  var hasAny = addedSlots.length > 0;
 
-  function renderQuickTest() {
-    quickListEl.innerHTML = '';
-    if (!lastRecording) {
-      quickTargetEl.textContent = 'No recording yet — record something above first.';
+  if (!hasAny) {
+    var li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'No favorites yet.';
+    ul.appendChild(li);
+    hintEl.innerHTML = 'While watching, press a number key <b>3 times</b> to save channel to that slot.';
+    favFocus = new FocusList(ul, function(){});
+    favFocus.setItems([]);
+    updateHomeFocus();
+    return;
+  }
+
+  addedSlots.forEach(function(slot) {
+    var fav = state.favorites[slot];
+    var li = document.createElement('li');
+    li.innerHTML = '<span class="slot">' + slot + '</span>' + escapeHtml(fav.name);
+    li.dataset.slot = slot;
+    ul.appendChild(li);
+  });
+
+  var freeCount = slots.length - addedSlots.length;
+  if (freeCount > 0) {
+    hintEl.innerHTML = 'Press a number <b>2×</b> to tune &nbsp;|&nbsp; <b>3×</b> while watching to add/replace slot.';
+  } else {
+    hintEl.innerHTML = 'Press a number <b>2×</b> to tune &nbsp;|&nbsp; <b>3×</b> while watching to replace a slot.';
+  }
+
+  favFocus = new FocusList(ul, function(slot) {
+    playFavoriteSlot(slot);
+  });
+  favFocus.setItems(addedSlots);
+  updateHomeFocus();
+}
+
+function updateHomeFocus() {
+  var browseEl = document.getElementById('browseBtn');
+  var logoutEl = document.getElementById('logoutBtn');
+  browseEl.classList.toggle('focused', homeBtnFocus === 1);
+  logoutEl.classList.toggle('focused', homeBtnFocus === 2);
+  if (homeBtnFocus === 0 && favFocus) favFocus.render();
+  else if (favFocus) {
+    for (var i = 0; i < favFocus.container.children.length; i++)
+      favFocus.container.children[i].classList.remove('focused');
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+/* ── Favorite slot logic: triple-press to save, double-press to jump ── */
+function handleFavKey(slot, isInPlayer) {
+  if (!favPressState[slot]) {
+    favPressState[slot] = { count: 0, timer: null };
+  }
+  var ps = favPressState[slot];
+  clearTimeout(ps.timer);
+  ps.count++;
+
+  if (isInPlayer) {
+    if (ps.count === 1) {
+      showToast('Press ' + slot + ' again twice to save as Fav ' + slot, 1200);
+    } else if (ps.count === 2) {
+      showToast('Press ' + slot + ' once more to confirm save...', 1200);
+    } else if (ps.count >= 3) {
+      ps.count = 0;
+      clearTimeout(ps.timer);
+      if (state.favorites[slot]) {
+        var oldName = state.favorites[slot].name;
+        showConfirm(
+          'Replace Fav ' + slot + '?\n"' + oldName + '"\n→ "' + state.currentChannel.name + '"',
+          function() { doSaveFavorite(slot); }
+        );
+      } else {
+        doSaveFavorite(slot);
+      }
       return;
     }
-    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName +
-      ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
-
-    playbackMethods.forEach(function (pm) {
-      var row = document.createElement('div'); row.className = 'qt-row';
-
-      var nameEl = document.createElement('div'); nameEl.className = 'qt-name';
-      nameEl.textContent = pm.name;  // textContent — safe, no HTML parsing
-
-      var detailEl = document.createElement('div'); detailEl.className = 'qt-detail';
-      var statusEl = document.createElement('div'); statusEl.className = 'qt-status'; statusEl.textContent = '–';
-
-      var confirmBtn = document.createElement('button');
-      confirmBtn.textContent = '❔'; confirmBtn.style.display = 'none';
-      confirmBtn.title = 'Cycles: Unconfirmed → 🔊 Audible → 🔇 Silent';
-      var cState = 0;
-      confirmBtn.addEventListener('click', function () {
-        cState = (cState + 1) % 3;
-        confirmBtn.textContent = cState === 0 ? '❔' : cState === 1 ? '🔊' : '🔇';
-      });
-
-      var testBtn = document.createElement('button'); testBtn.textContent = '▶ Test';
-      testBtn.addEventListener('click', function () {
-        var rec = lastRecording;
-        testBtn.disabled = true; statusEl.textContent = '⏳'; detailEl.textContent = ''; confirmBtn.style.display = 'none';
-        log('Quick test: "' + pm.name + '" on "' + rec.methodName + '"');
-        pm.run(rec.blob).then(function (result) {
-          statusEl.textContent = statusGlyph[result.status] || result.status;
-          detailEl.textContent = result.detail || ''; detailEl.title = result.detail || '';
-          confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
-          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
-        }).finally(function () { testBtn.disabled = false; });
-      });
-
-      row.appendChild(nameEl); row.appendChild(detailEl); row.appendChild(statusEl);
-      row.appendChild(confirmBtn); row.appendChild(testBtn);
-      quickListEl.appendChild(row);
-    });
-  }
-
-  // ───────────────────────── Recordings list UI ─────────────────────────
-  var recordingsListEl = document.getElementById('recordings-list');
-  var matrixTableEl = document.getElementById('matrix-table');
-  var recCounter = 0;
-
-  function addRecording(method, blob) {
-    recCounter++;
-    var rec = {
-      id: 'rec' + recCounter, methodId: method.id, methodName: method.name, blob: blob,
-      url: URL.createObjectURL(blob), mimeType: blob.type || 'unknown',
-      sizeKb: (blob.size / 1024).toFixed(1), ts: new Date().toLocaleTimeString(), matrixCells: {}
-    };
-    recordings.push(rec);
-    lastRecording = rec;
-    renderRecordingsList();
-    addMatrixRow(rec);
-    renderQuickTest();
-  }
-
-  function sanitizeFilename(s) { return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase(); }
-  function extFromMime(mime) {
-    if (!mime) return 'bin';
-    if (mime.indexOf('webm') !== -1) return 'webm';
-    if (mime.indexOf('mp4') !== -1) return 'm4a';
-    if (mime.indexOf('ogg') !== -1) return 'ogg';
-    if (mime.indexOf('wav') !== -1) return 'wav';
-    return 'audio';
-  }
-
-  function renderRecordingsList() {
-    if (recordings.length === 0) {
-      recordingsListEl.innerHTML = '<div class="empty-note">No recordings yet — use a method above.</div>'; return;
+  } else {
+    if (ps.count === 1) {
+      showToast('Press ' + slot + ' again to tune Fav ' + slot, 1000);
+    } else if (ps.count >= 2) {
+      ps.count = 0;
+      clearTimeout(ps.timer);
+      playFavoriteSlot(slot);
+      return;
     }
-    recordingsListEl.innerHTML = '';
-    recordings.forEach(function (rec) {
-      var row = document.createElement('div'); row.className = 'rec-row';
-      var title = document.createElement('strong'); title.textContent = rec.methodName;
-      var meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = rec.mimeType + ' · ' + rec.sizeKb + ' KB · captured ' + rec.ts;
-      var audioEl = document.createElement('audio'); audioEl.controls = true; audioEl.src = rec.url;
-      var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
-      var dlLink = document.createElement('a'); dlLink.href = rec.url;
-      dlLink.download = sanitizeFilename(rec.methodName) + '.' + extFromMime(rec.mimeType);
-      var dlBtn = document.createElement('button'); dlBtn.textContent = '⬇ Download'; dlLink.appendChild(dlBtn);
-      var testAllBtn = document.createElement('button'); testAllBtn.textContent = '▶ Test all playback methods';
-      testAllBtn.addEventListener('click', function () { runAllPlaybackForRecording(rec); });
-      btnRow.appendChild(dlLink); btnRow.appendChild(testAllBtn);
-      row.appendChild(title); row.appendChild(meta); row.appendChild(audioEl); row.appendChild(btnRow);
-      recordingsListEl.appendChild(row);
-    });
   }
 
-  document.getElementById('clear-recordings').addEventListener('click', function () {
-    recordings.forEach(function (rec) { URL.revokeObjectURL(rec.url); });
-    recordings = []; lastRecording = null;
-    renderRecordingsList(); renderQuickTest(); matrixTableEl.innerHTML = '';
-    log('Cleared all recordings and matrix', 'info');
+  ps.timer = setTimeout(function(){ ps.count = 0; }, FAV_PRESS_TIMEOUT);
+}
+
+function doSaveFavorite(slot) {
+  if (!state.currentChannel) return;
+  state.favorites[slot] = { stream_id: state.currentChannel.stream_id, name: state.currentChannel.name };
+  saveFavorites();
+  showToast('\u2605 Saved to Fav ' + slot + ': ' + state.currentChannel.name, 2000);
+}
+
+function playFavoriteSlot(slot) {
+  var fav = state.favorites[slot];
+  if (!fav) { showToast('Fav ' + slot + ' is empty', 1200); return; }
+  playChannel(fav);
+}
+
+/* ── Categories ── */
+function loadCategories() {
+  document.getElementById('catStatus').textContent = 'Loading...';
+  showScreen('catScreen');
+  fetchJson(apiUrl('get_live_categories'), function(data) {
+    state.categories = data || [];
+    document.getElementById('catStatus').textContent = '';
+    renderCategories();
+  }, function(msg) {
+    document.getElementById('catStatus').textContent = msg;
   });
-
-  // ───────────────────────── Matrix UI ─────────────────────────
-  function ensureMatrixHeader() {
-    if (matrixTableEl.querySelector('thead')) return;
-    var thead = document.createElement('thead'), tr = document.createElement('tr');
-    var corner = document.createElement('th'); corner.className = 'rowhead'; corner.textContent = 'Recording \\ Playback';
-    tr.appendChild(corner);
-    playbackMethods.forEach(function (pm) {
-      var th = document.createElement('th'); th.textContent = pm.name; tr.appendChild(th);
-    });
-    thead.appendChild(tr); matrixTableEl.appendChild(thead); matrixTableEl.appendChild(document.createElement('tbody'));
-  }
-
-  function addMatrixRow(rec) {
-    ensureMatrixHeader();
-    var tbody = matrixTableEl.querySelector('tbody'), tr = document.createElement('tr');
-    var rowhead = document.createElement('td'); rowhead.className = 'rowhead';
-    rowhead.textContent = rec.methodName + ' (' + rec.ts + ')';
-    tr.appendChild(rowhead);
-    playbackMethods.forEach(function (pm) {
-      var td = document.createElement('td'); td.className = 'status-untested';
-      var statusSpan = document.createElement('div'); statusSpan.className = 'cell-status'; statusSpan.textContent = '–';
-      var confirmBtn = document.createElement('button'); confirmBtn.className = 'cell-confirm';
-      confirmBtn.textContent = '❔'; confirmBtn.title = 'Click after listening: Unconfirmed → 🔊 Audible → 🔇 Silent';
-      confirmBtn.style.display = 'none';
-      var cState = 0;
-      confirmBtn.addEventListener('click', function () {
-        cState = (cState + 1) % 3;
-        if (cState === 0) { confirmBtn.textContent = '❔'; td.classList.remove('confirm-audible', 'confirm-silent'); }
-        else if (cState === 1) { confirmBtn.textContent = '🔊'; td.classList.remove('confirm-silent'); td.classList.add('confirm-audible'); }
-        else { confirmBtn.textContent = '🔇'; td.classList.remove('confirm-audible'); td.classList.add('confirm-silent'); }
-      });
-      td.appendChild(statusSpan); td.appendChild(confirmBtn);
-      td.title = 'Click cell to (re)run this test';
-      td.addEventListener('click', function (e) { if (e.target === confirmBtn) return; runPlaybackTest(rec, pm); });
-      tr.appendChild(td);
-      rec.matrixCells[pm.id] = { td: td, statusSpan: statusSpan, confirmBtn: confirmBtn };
-    });
-    tbody.appendChild(tr);
-  }
-
-  function runPlaybackTest(rec, pm) {
-    var cell = rec.matrixCells[pm.id];
-    cell.statusSpan.textContent = '⏳'; cell.td.className = 'status-untested';
-    log('Testing "' + pm.name + '" on "' + rec.methodName + '"…');
-    return pm.run(rec.blob).then(function (result) {
-      cell.statusSpan.textContent = statusGlyph[result.status] || result.status;
-      cell.td.className = 'status-' + result.status;
-      cell.confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
-      cell.td.title = result.detail || '';
-      log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
-      return result;
-    });
-  }
-
-  function runAllPlaybackForRecording(rec) {
-    var chain = Promise.resolve();
-    playbackMethods.forEach(function (pm) {
-      chain = chain.then(function () { return runPlaybackTest(rec, pm); })
-                   .then(function () { return new Promise(function (r) { setTimeout(r, 300); }); });
-    });
-    return chain;
-  }
-
-  document.getElementById('run-full-matrix').addEventListener('click', function () {
-    if (recordings.length === 0) { log('No recordings to test — record something first', 'warn'); return; }
-    log('Running full matrix: ' + recordings.length + ' × ' + playbackMethods.length, 'info');
-    var chain = Promise.resolve();
-    recordings.forEach(function (rec) { chain = chain.then(function () { return runAllPlaybackForRecording(rec); }); });
-    chain.then(function () { log('Full matrix complete', 'ok'); });
+}
+function renderCategories() {
+  var ul = document.getElementById('catList');
+  ul.innerHTML = '';
+  state.categories.forEach(function(cat) {
+    var li = document.createElement('li');
+    li.textContent = cat.category_name;
+    ul.appendChild(li);
   });
+  catFocus = new FocusList(ul, function(cat){ loadChannels(cat); });
+  catFocus.setItems(state.categories);
+}
 
-  document.getElementById('clear-matrix').addEventListener('click', function () {
-    recordings.forEach(function (rec) {
-      Object.keys(rec.matrixCells).forEach(function (pid) {
-        var cell = rec.matrixCells[pid];
-        cell.statusSpan.textContent = '–'; cell.td.className = 'status-untested';
-        cell.confirmBtn.style.display = 'none'; cell.confirmBtn.textContent = '❔';
-        cell.td.classList.remove('confirm-audible', 'confirm-silent');
-      });
-    });
-    log('Matrix statuses reset', 'info');
+/* ── Channels ── */
+function loadChannels(cat) {
+  document.getElementById('chanTitle').textContent = cat.category_name;
+  document.getElementById('chanStatus').textContent = 'Loading...';
+  showScreen('chanScreen');
+  fetchJson(apiUrl('get_live_streams', '&category_id=' + encodeURIComponent(cat.category_id)), function(data) {
+    state.channels = data || [];
+    document.getElementById('chanStatus').textContent = '';
+    renderChannels();
+  }, function(msg) {
+    document.getElementById('chanStatus').textContent = msg;
   });
-
-  document.getElementById('export-json').addEventListener('click', function () {
-    var data = recordings.map(function (rec) {
-      var results = {};
-      Object.keys(rec.matrixCells).forEach(function (pid) {
-        results[pid] = { status: rec.matrixCells[pid].td.className.replace('status-', ''), confirm: rec.matrixCells[pid].confirmBtn.textContent };
-      });
-      return { method: rec.methodName, mimeType: rec.mimeType, sizeKb: rec.sizeKb, capturedAt: rec.ts, playbackResults: results };
-    });
-    var json = JSON.stringify({ url: location.href, userAgent: navigator.userAgent, exportedAt: new Date().toISOString(), recordings: data }, null, 2);
-    var blob = new Blob([json], { type: 'application/json' }), url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href = url; a.download = 'audio-test-results.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    log('Exported results JSON', 'ok');
+}
+function renderChannels() {
+  var ul = document.getElementById('chanList');
+  ul.innerHTML = '';
+  state.channels.forEach(function(ch) {
+    var li = document.createElement('li');
+    li.textContent = ch.name;
+    ul.appendChild(li);
   });
+  chanFocus = new FocusList(ul, function(ch, idx) {
+    state.currentChanIndex = idx;
+    playChannel(ch);
+  });
+  chanFocus.setItems(state.channels);
+}
 
-  log('Audio API Test Suite loaded. Protocol: ' + location.protocol + (window.isSecureContext ? ' (secure context ✅)' : ' (NOT secure ⚠️ — getUserMedia will fail)'), 'info');
-})();
+/* ══════════════════════════════
+   PLAYER
+   Driven by real <video> events ('playing' / 'waiting' / 'error'),
+   not by whether a particular play() promise resolved. A play() call
+   can be rejected (e.g. a stray pause()/load() race when hls.js attaches
+   media) even while the element goes on to actually start rendering
+   frames moments later — that mismatch was exactly why the old version
+   showed a false "press OK" error with live video visible behind it,
+   and why audio never got unmuted (the unmute only ran on the success
+   path of that unreliable promise chain).
+══════════════════════════════ */
+var videoEl = document.getElementById('video');
+var hls = null;
+var playerErrorActive = false;
+var playStarted = false;
+var playWatchdog = null;
+
+function streamUrl(ch) {
+  return state.server.replace(/\/$/, '') + '/live/' +
+    encodeURIComponent(state.user) + '/' + encodeURIComponent(state.pass) + '/' +
+    ch.stream_id + '.m3u8';
+}
+
+function destroyHls() {
+  if (hls) {
+    try { hls.destroy(); } catch (e) {}
+    hls = null;
+  }
+}
+
+function setPlayerState(s, msg) {
+  playerErrorActive = (s === 'error');
+  var el = document.getElementById('playerStatus');
+  el.className = 'player-status ' + s;
+  if (s === 'loading') {
+    el.innerHTML = '<div class="spinner"></div><div>Loading…</div>';
+  } else if (s === 'error') {
+    el.innerHTML = '<div class="err-icon">&#9888;</div>' +
+      '<div>' + escapeHtml(msg || 'Playback error') + '</div>' +
+      '<div class="err-hint">Press OK to retry</div>';
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function attemptPlay() {
+  var p = videoEl.play();
+  if (p && p.catch) p.catch(function () { /* ignored — watchdog covers it */ });
+}
+
+/* One-time listeners on the single shared <video> element. These reflect
+   what the element is actually doing, so the UI and audio always match
+   real playback state regardless of how many play() calls were issued. */
+/* ── Cloud Phone audio channel unlock ──
+   The Cloud Phone media channel can stay muted/suspended until a
+   volume event or AudioContext.resume() wakes it up. We mirror the
+   exact fix from the Audio API Test Suite: create/resume an
+   AudioContext and poke volumeManager, all synchronously inside the
+   'play' event so it happens within the user-gesture window. */
+function unlockAudioChannel() {
+  if (!window._iptvAudioCtx) {
+    try { window._iptvAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  if (window._iptvAudioCtx && window._iptvAudioCtx.state === 'suspended') {
+    try { window._iptvAudioCtx.resume(); } catch (e) {}
+  }
+  if (navigator.volumeManager && navigator.volumeManager.requestUp) {
+    try { navigator.volumeManager.requestUp(); } catch (e) {}
+  }
+}
+
+videoEl.addEventListener('play', unlockAudioChannel);
+
+videoEl.addEventListener('playing', function () {
+  playStarted = true;
+  clearTimeout(playWatchdog);
+  setPlayerState('idle');
+  /* Unmute after a short gap — Cloud Phone needs the channel
+     unlocked (above) before the muted flag can actually be cleared.
+     200 ms is enough for the AudioContext resume to complete. */
+  setTimeout(function () {
+    try { videoEl.muted = false; videoEl.volume = 1.0; } catch (e) {}
+  }, 200);
+});
+videoEl.addEventListener('waiting', function () {
+  if (!playerErrorActive) setPlayerState('loading');
+});
+videoEl.addEventListener('error', function () {
+  setPlayerState('error', 'Could not load stream');
+});
+
+function playChannel(ch) {
+  state.currentChannel = { stream_id: ch.stream_id, name: ch.name };
+
+  destroyHls();
+  clearTimeout(playWatchdog);
+  playStarted = false;
+
+  videoEl.muted = true; // start muted so autoplay is always allowed; unlocked & unmuted once 'playing' fires
+  videoEl.volume = 1.0; // pre-set volume so it's ready when we unmute
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
+
+  document.getElementById('nowPlaying').textContent = ch.name;
+  applyVideoRotation();
+  showScreen('playerScreen');
+  setPlayerState('loading');
+
+  var url = streamUrl(ch);
+
+  if (window.Hls && window.Hls.isSupported()) {
+    hls = new window.Hls({ maxBufferLength: 15, liveSyncDurationCount: 3 });
+    hls.loadSource(url);
+    hls.attachMedia(videoEl);
+    hls.on(window.Hls.Events.MANIFEST_PARSED, attemptPlay);
+    hls.on(window.Hls.Events.ERROR, function (event, data) {
+      if (!data || !data.fatal) return;
+      if (data.type === window.Hls.ErrorTypes.NETWORK_ERROR) {
+        try { hls.startLoad(); } catch (e) { setPlayerState('error', 'Network error'); }
+      } else if (data.type === window.Hls.ErrorTypes.MEDIA_ERROR) {
+        try { hls.recoverMediaError(); } catch (e) { setPlayerState('error', 'Media error'); }
+      } else {
+        setPlayerState('error', 'Could not load stream');
+        destroyHls();
+      }
+    });
+  } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+    videoEl.src = url;
+    attemptPlay();
+  } else {
+    setPlayerState('error', 'HLS playback not supported here');
+    return;
+  }
+
+  // Fallback: if nothing has actually started playing shortly after we
+  // asked it to, try once more. A single watchdog retry instead of a
+  // chain of overlapping play() calls avoids the race that caused
+  // spurious errors while video was already running underneath.
+  playWatchdog = setTimeout(function () {
+    if (!playStarted) {
+      attemptPlay();
+      setTimeout(function () {
+        if (!playStarted) setPlayerState('error', 'Press OK to retry');
+      }, 1500);
+    }
+  }, 1500);
+}
+
+function retryCurrentChannel() {
+  if (state.currentChannel) playChannel(state.currentChannel);
+}
+
+function stopPlayer() {
+  closeChannelOsd();
+  destroyHls();
+  clearTimeout(playWatchdog);
+  videoEl.pause();
+  videoEl.removeAttribute('src');
+  videoEl.load();
+  setPlayerState('idle');
+  state.currentChannel = null;
+  goBack();
+}
+
+/* ── Video rotation (press 0) ── */
+function toggleRotation() {
+  state.videoRotated = !state.videoRotated;
+  applyVideoRotation();
+  showToast(state.videoRotated ? '\u21BB ROTATED — \u2190\u2192 change channel' : '\u21BA NORMAL', 1500);
+}
+function applyVideoRotation() {
+  var rotateTag = document.getElementById('rotateTag');
+  if (state.videoRotated) {
+    videoEl.className = 'rotated';
+    rotateTag.style.display = 'inline-block';
+  } else {
+    videoEl.className = '';
+    rotateTag.style.display = 'none';
+  }
+}
+
+/* ── In-player Channel OSD (zapper overlay) ──
+   Lets the user browse the channel list without leaving the player.
+   Up/Down (or Left/Right when rotated) opens a panel; further presses
+   move the highlight only. The highlighted channel is committed
+   (played) on Enter/Right, or automatically after a short pause. */
+var osdState = { open: false, index: -1, timer: null };
+var OSD_AUTO_COMMIT_MS = 2200;
+
+function openChannelOsd(dir) {
+  if (!state.channels || !state.channels.length) {
+    showToast('No channel list loaded', 1200);
+    return;
+  }
+  if (!osdState.open) {
+    osdState.open = true;
+    osdState.index = state.currentChanIndex >= 0 ? state.currentChanIndex : 0;
+    renderChannelOsd();
+    document.getElementById('channelOsd').classList.add('open');
+  } else if (dir) {
+    moveChannelOsd(dir);
+    return;
+  }
+  resetOsdTimer();
+}
+function moveChannelOsd(dir) {
+  var n = state.channels.length;
+  if (!n) return;
+  osdState.index = (osdState.index + dir + n) % n;
+  renderChannelOsd();
+  resetOsdTimer();
+}
+function renderChannelOsd() {
+  var ul = document.getElementById('channelOsdList');
+  ul.innerHTML = '';
+  state.channels.forEach(function (ch, i) {
+    var li = document.createElement('li');
+    li.textContent = ch.name;
+    if (i === osdState.index) li.className = 'focused';
+    ul.appendChild(li);
+  });
+  var focusedEl = ul.children[osdState.index];
+  if (focusedEl && focusedEl.scrollIntoView) focusedEl.scrollIntoView({ block: 'center' });
+}
+function resetOsdTimer() {
+  clearTimeout(osdState.timer);
+  osdState.timer = setTimeout(commitChannelOsd, OSD_AUTO_COMMIT_MS);
+}
+function commitChannelOsd() {
+  if (!osdState.open) return;
+  var idx = osdState.index;
+  closeChannelOsd();
+  if (idx !== state.currentChanIndex && state.channels[idx]) {
+    state.currentChanIndex = idx;
+    playChannel(state.channels[idx]);
+  }
+}
+function cancelChannelOsd() {
+  closeChannelOsd();
+}
+function closeChannelOsd() {
+  clearTimeout(osdState.timer);
+  osdState.open = false;
+  document.getElementById('channelOsd').classList.remove('open');
+}
+
+/* ── Keyboard handler ── */
+document.addEventListener('keydown', function(e) {
+  var key = e.key;
+
+  /* Confirm dialog intercepts everything */
+  if (document.getElementById('confirmDlg').classList.contains('active')) {
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      confirmFocus = confirmFocus === 0 ? 1 : 0;
+      updateConfirmFocus();
+      e.preventDefault();
+    } else if (key === 'Enter' || key === 'SoftLeft') {
+      if (confirmFocus === 0) { confirmCallback.ok(); } else { confirmCallback.no(); }
+      closeConfirm();
+      e.preventDefault();
+    } else if (key === 'Backspace' || key === 'SoftRight' || key === 'Escape') {
+      handleBackAction();
+      e.preventDefault();
+    }
+    return;
+  }
+
+  /* Right Soft Key fallback (the real RSK is handled via the 'back' event
+     listener above; this covers simulators/keyboards that send a key instead) */
+  if (key === 'SoftRight' || key === 'F2') {
+    handleBackAction();
+    e.preventDefault();
+    return;
+  }
+
+  var activeId = document.querySelector('.screen.active').id;
+
+  /* Digit keys: let them type freely on login screen, otherwise favorites */
+  if (/^[0-9]$/.test(key)) {
+    if (activeId === 'loginScreen') return;
+    if (activeId === 'playerScreen' && osdState.open) cancelChannelOsd();
+    handleFavKey(key, activeId === 'playerScreen');
+    e.preventDefault();
+    return;
+  }
+
+  /* Volume hint: * and # anywhere in player */
+  if (key === '*' || key === '#') {
+    if (activeId === 'playerScreen') {
+      showToast(key === '#' ? '\u25B2 VOL UP' : '\u25BC VOL DOWN', 600);
+    }
+    return;
+  }
+
+  /* ── Player screen ── */
+  if (activeId === 'playerScreen') {
+
+    if (osdState.open) {
+      if (key === 'ArrowUp') { moveChannelOsd(-1); e.preventDefault(); }
+      else if (key === 'ArrowDown') { moveChannelOsd(1); e.preventDefault(); }
+      else if (key === 'Enter' || key === 'ArrowRight') { commitChannelOsd(); e.preventDefault(); }
+      else if (key === 'ArrowLeft' || key === 'Backspace') { cancelChannelOsd(); e.preventDefault(); }
+      return;
+    }
+
+    if (key === 'Enter' && playerErrorActive) { retryCurrentChannel(); e.preventDefault(); return; }
+    if (key === '0') { toggleRotation(); e.preventDefault(); return; }
+
+    var isRotated = state.videoRotated;
+    if (!isRotated) {
+      if (key === 'ArrowUp')        { openChannelOsd(-1); e.preventDefault(); }
+      else if (key === 'ArrowDown') { openChannelOsd(1);  e.preventDefault(); }
+      else if (key === 'ArrowLeft' || key === 'Backspace') { stopPlayer(); e.preventDefault(); }
+      else if (key === 'ArrowRight') { e.preventDefault(); }
+    } else {
+      if (key === 'ArrowLeft')       { openChannelOsd(-1); e.preventDefault(); }
+      else if (key === 'ArrowRight') { openChannelOsd(1);  e.preventDefault(); }
+      else if (key === 'ArrowUp')    { e.preventDefault(); }
+      else if (key === 'ArrowDown')  { e.preventDefault(); }
+      else if (key === 'Backspace')  { stopPlayer(); e.preventDefault(); }
+    }
+    return;
+  }
+
+  /* ── Login screen ── */
+  if (activeId === 'loginScreen') {
+    if (key === 'Enter') {
+      if (document.activeElement.id === 'loginBtn' ||
+          document.activeElement.tagName === 'BODY') {
+        doLoginFromForm(); e.preventDefault();
+      }
+    }
+    return;
+  }
+
+  /* ── Home screen ── */
+  if (activeId === 'homeScreen') {
+    if (key === 'ArrowDown') {
+      if (homeBtnFocus === 0 && favFocus && favFocus.items.length > 0 &&
+          favFocus.index < favFocus.items.length - 1) {
+        favFocus.move(1);
+      } else if (homeBtnFocus === 0) {
+        homeBtnFocus = 1;
+      } else {
+        homeBtnFocus = Math.min(2, homeBtnFocus + 1);
+      }
+      updateHomeFocus(); e.preventDefault();
+    } else if (key === 'ArrowUp') {
+      if (homeBtnFocus === 0 && favFocus) {
+        if (favFocus.index > 0) favFocus.move(-1);
+      } else if (homeBtnFocus === 1) {
+        homeBtnFocus = 0;
+      } else {
+        homeBtnFocus = Math.max(0, homeBtnFocus - 1);
+      }
+      updateHomeFocus(); e.preventDefault();
+    } else if (key === 'Enter' || key === 'ArrowRight') {
+      if (homeBtnFocus === 0 && favFocus) favFocus.select();
+      else if (homeBtnFocus === 1) loadCategories();
+      else if (homeBtnFocus === 2) logout();
+      e.preventDefault();
+    } else if (key === 'ArrowLeft' || key === 'Backspace') {
+      handleBackAction(); e.preventDefault();
+    }
+    return;
+  }
+
+  /* ── Category screen ── */
+  if (activeId === 'catScreen' && catFocus) {
+    if (key === 'ArrowDown') { catFocus.move(1); e.preventDefault(); }
+    else if (key === 'ArrowUp') { catFocus.move(-1); e.preventDefault(); }
+    else if (key === 'Enter' || key === 'ArrowRight') { catFocus.select(); e.preventDefault(); }
+    else if (key === 'ArrowLeft' || key === 'Backspace') { handleBackAction(); e.preventDefault(); }
+    return;
+  }
+
+  /* ── Channel screen ── */
+  if (activeId === 'chanScreen' && chanFocus) {
+    if (key === 'ArrowDown') { chanFocus.move(1); e.preventDefault(); }
+    else if (key === 'ArrowUp') { chanFocus.move(-1); e.preventDefault(); }
+    else if (key === 'Enter' || key === 'ArrowRight') { chanFocus.select(); e.preventDefault(); }
+    else if (key === 'ArrowLeft' || key === 'Backspace') { handleBackAction(); e.preventDefault(); }
+    return;
+  }
+});
+
+/* ── Touch/click fallbacks ── */
+document.getElementById('loginBtn').addEventListener('click', doLoginFromForm);
+document.getElementById('browseBtn').addEventListener('click', loadCategories);
+document.getElementById('logoutBtn').addEventListener('click', logout);
+
+document.getElementById('favList').addEventListener('click', function(e) {
+  var li = e.target.closest('li');
+  if (!li || !li.dataset.slot) return;
+  playFavoriteSlot(li.dataset.slot);
+});
+document.getElementById('catList').addEventListener('click', function(e) {
+  var li = e.target.closest('li');
+  if (!li || !catFocus) return;
+  var idx = Array.prototype.indexOf.call(li.parentNode.children, li);
+  catFocus.index = idx; catFocus.select();
+});
+document.getElementById('chanList').addEventListener('click', function(e) {
+  var li = e.target.closest('li');
+  if (!li || !chanFocus) return;
+  var idx = Array.prototype.indexOf.call(li.parentNode.children, li);
+  chanFocus.index = idx; chanFocus.select();
+});
+document.getElementById('channelOsdList').addEventListener('click', function(e) {
+  var li = e.target.closest('li');
+  if (!li) return;
+  var idx = Array.prototype.indexOf.call(li.parentNode.children, li);
+  osdState.index = idx;
+  commitChannelOsd();
+});
+
+/* ── Init ── */
+loadFavorites();
+tryAutoLogin();
+
+/* ── PWA service worker (no-op on Cloud Phone, which doesn't support Service
+     Workers — harmless elsewhere since registration failures are caught) ── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
 </script>
 </body>
 </html>
