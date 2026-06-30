@@ -432,13 +432,13 @@
 
   var recordingMethods = [
     { id: 'mr-webm-opus', name: 'MediaRecorder — WebM/Opus', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
-    { id: 'mr-mp4-aac', name: 'MediaRecorder — MP4/AAC', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
-    { id: 'mr-ogg-opus', name: 'MediaRecorder — Ogg/Opus', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
-    { id: 'mr-wav', name: 'MediaRecorder — WAV', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/wav'); } },
     { id: 'mr-default', name: 'MediaRecorder — Browser Default', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder(null); } },
     { id: 'webaudio-pcm', name: 'Web Audio PCM → WAV (ScriptProcessorNode)', cat: 'getUserMedia + Web Audio', run: function () { return recordViaWebAudioPCM(); } },
     { id: 'native-capture', name: 'Native System Recorder (capture=microphone)', cat: 'File Input (like dictate flow)', run: function () { return recordViaFileInput(true); } },
-    { id: 'file-upload', name: 'Audio File Upload (no capture)', cat: 'File Input (like dictate flow)', run: function () { return recordViaFileInput(false); } }
+    { id: 'file-upload', name: 'Audio File Upload (no capture)', cat: 'File Input (like dictate flow)', run: function () { return recordViaFileInput(false); } },
+    { id: 'mr-mp4-aac', name: 'MediaRecorder — MP4/AAC ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
+    { id: 'mr-ogg-opus', name: 'MediaRecorder — Ogg/Opus ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
+    { id: 'mr-wav', name: 'MediaRecorder — WAV ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorder('audio/wav'); } }
   ];
 
   // ───────────────────────── Playback method implementations ─────────────────────────
@@ -602,6 +602,60 @@
     });
   }
 
+  function unlockCloudPhoneAudioChannel() {
+    // Mirrors the exact fix already in app.js addMessage(): the Cloud Phone
+    // media channel can stay muted/suspended until a volume event or
+    // AudioContext resume wakes it up.
+    if (!window._testSuiteAudioCtx) {
+      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (window._testSuiteAudioCtx && window._testSuiteAudioCtx.state === 'suspended') {
+      try { window._testSuiteAudioCtx.resume(); } catch (e) {}
+    }
+    if (navigator.volumeManager && navigator.volumeManager.requestUp) {
+      try { navigator.volumeManager.requestUp(); } catch (e) {}
+    }
+  }
+
+  function playAudioElementBlobUrlUnlocked(blob) {
+    var url = URL.createObjectURL(blob);
+    var audio = document.createElement('audio');
+    audio.style.display = 'none';
+    document.body.appendChild(audio);
+    audio.src = url;
+    unlockCloudPhoneAudioChannel();
+    return raceOutcome(audio).finally(function () {
+      audio.pause(); audio.removeAttribute('src'); audio.load();
+      document.body.removeChild(audio); URL.revokeObjectURL(url);
+    });
+  }
+
+  function playJsAudioObjectUnlocked(blob) {
+    var url = URL.createObjectURL(blob);
+    var audio = new Audio(url);
+    unlockCloudPhoneAudioChannel();
+    return raceOutcome(audio).finally(function () {
+      audio.pause(); URL.revokeObjectURL(url);
+    });
+  }
+
+  function playAudioElementUnlockThenPlay(blob) {
+    // Same as above, but unlock happens INSIDE a 'play' event handler
+    // (matches app.js exactly: addEventListener('play', ...)) rather than
+    // before .play() is called — some platforms only honor the unlock if
+    // it happens synchronously within the play gesture/event.
+    var url = URL.createObjectURL(blob);
+    var audio = document.createElement('audio');
+    audio.style.display = 'none';
+    document.body.appendChild(audio);
+    audio.src = url;
+    audio.addEventListener('play', unlockCloudPhoneAudioChannel, { once: true });
+    return raceOutcome(audio).finally(function () {
+      audio.pause(); audio.removeAttribute('src'); audio.load();
+      document.body.removeChild(audio); URL.revokeObjectURL(url);
+    });
+  }
+
   // Normalize raceOutcome-based functions (which resolve plain objects already)
   // vs the ones above that return {status, detail} directly — all playback
   // runners must resolve to {status, detail}, never throw.
@@ -615,8 +669,11 @@
 
   var playbackMethods = [
     { id: 'audio-bloburl', name: '<audio> + Blob URL', run: wrapPlayback(playAudioElementBlobUrl) },
+    { id: 'audio-bloburl-unlock', name: '<audio> + Blob URL + Unlock (pre-play)', run: wrapPlayback(playAudioElementBlobUrlUnlocked) },
+    { id: 'audio-unlock-onplay', name: '<audio> + Unlock on "play" event (matches app.js)', run: wrapPlayback(playAudioElementUnlockThenPlay) },
     { id: 'audio-datauri', name: '<audio> + Data URI', run: wrapPlayback(playAudioElementDataUri) },
     { id: 'js-audio-obj', name: 'new Audio() + Blob URL', run: wrapPlayback(playJsAudioObject) },
+    { id: 'js-audio-obj-unlock', name: 'new Audio() + Unlock', run: wrapPlayback(playJsAudioObjectUnlocked) },
     { id: 'audio-source', name: '<audio><source></audio>', run: wrapPlayback(playAudioSourceElement) },
     { id: 'webaudio-decode', name: 'Web Audio decodeAudioData', run: wrapPlayback(playViaWebAudioDecode) },
     { id: 'video-element', name: '<video> element', run: wrapPlayback(playViaVideoElement) },
