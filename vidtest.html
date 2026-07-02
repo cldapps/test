@@ -317,31 +317,44 @@
   }
 
   // Synthetic tiny sample video — no camera required. Animates a canvas and
-  // records it (plus a quiet tone track) via canvas.captureStream() + MediaRecorder.
+  // records it together with a clearly audible beeping tone track, via
+  // canvas.captureStream() + MediaRecorder. Every sample this suite produces
+  // must include sound, so this rejects outright if Web Audio isn't available
+  // rather than silently producing a silent clip.
   function recordViaCanvasCapture(durationMs) {
     durationMs = durationMs || 3000;
     return new Promise(function (resolve, reject) {
       if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { reject(new Error('Web Audio API unavailable — cannot guarantee this sample includes sound, refusing to generate a silent video')); return; }
       var canvas = document.createElement('canvas'); canvas.width = 240; canvas.height = 160;
       var ctx2d = canvas.getContext('2d');
       if (!canvas.captureStream) { reject(new Error('HTMLCanvasElement.captureStream not available on this platform')); return; }
       var stream;
       try { stream = canvas.captureStream(25); } catch (e) { reject(e); return; }
 
-      var audioCtx = null, oscillator = null;
+      var audioCtx, oscillator, gain, beepTimer, beepOn = false;
       try {
-        var AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) {
-          audioCtx = new AC();
-          oscillator = audioCtx.createOscillator();
-          var gain = audioCtx.createGain(); gain.gain.value = 0.05;
-          var dest = audioCtx.createMediaStreamDestination();
-          oscillator.type = 'sine'; oscillator.frequency.value = 440;
-          oscillator.connect(gain); gain.connect(dest);
-          oscillator.start();
-          dest.stream.getAudioTracks().forEach(function (t) { stream.addTrack(t); });
-        }
-      } catch (_) { /* tone track is optional */ }
+        audioCtx = new AC();
+        oscillator = audioCtx.createOscillator();
+        gain = audioCtx.createGain(); gain.gain.value = 0.22;
+        var dest = audioCtx.createMediaStreamDestination();
+        oscillator.type = 'square'; oscillator.frequency.value = 440;
+        oscillator.connect(gain); gain.connect(dest);
+        oscillator.start();
+        dest.stream.getAudioTracks().forEach(function (t) { stream.addTrack(t); });
+        // Clearly audible alternating beep pattern (not a quiet constant drone)
+        // so it's obvious on playback whether sound made it through.
+        beepTimer = setInterval(function () {
+          beepOn = !beepOn;
+          var now = audioCtx.currentTime;
+          gain.gain.setTargetAtTime(beepOn ? 0.22 : 0.01, now, 0.01);
+          oscillator.frequency.setTargetAtTime(beepOn ? 880 : 440, now, 0.01);
+        }, 280);
+      } catch (e) {
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {}
+        reject(e); return;
+      }
 
       var chosenMime = 'video/webm;codecs=vp8,opus';
       var recorder;
@@ -360,22 +373,28 @@
         ctx2d.fillStyle = 'hsl(' + hue + ',75%,55%)';
         var x = (canvas.width / 2) + Math.sin(frame / 10) * 70;
         var y = (canvas.height / 2) + Math.cos(frame / 10) * 40;
-        ctx2d.beginPath(); ctx2d.arc(x, y, 20, 0, Math.PI * 2); ctx2d.fill();
+        ctx2d.beginPath(); ctx2d.arc(x, y, beepOn ? 26 : 20, 0, Math.PI * 2); ctx2d.fill();
         ctx2d.fillStyle = '#fff'; ctx2d.font = '12px monospace';
-        ctx2d.fillText('sample frame ' + frame, 8, 18);
+        ctx2d.fillText('sample frame ' + frame + (beepOn ? '  \u266a' : ''), 8, 18);
         raf = requestAnimationFrame(draw);
       }
       draw();
 
       function teardown() {
         cancelAnimationFrame(raf);
+        clearInterval(beepTimer);
         stream.getTracks().forEach(function (t) { t.stop(); });
-        if (oscillator) { try { oscillator.stop(); } catch (_) {} }
-        if (audioCtx) { try { audioCtx.close(); } catch (_) {} }
+        try { oscillator.stop(); } catch (_) {}
+        try { audioCtx.close(); } catch (_) {}
       }
       recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
       recorder.onerror = function (e) { teardown(); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
-      recorder.onstop = function () { teardown(); resolve(new Blob(chunks, { type: recorder.mimeType || chosenMime || 'video/webm' })); };
+      recorder.onstop = function () {
+        teardown();
+        var blob = new Blob(chunks, { type: recorder.mimeType || chosenMime || 'video/webm' });
+        blob._audioStatus = 'yes';
+        resolve(blob);
+      };
       recorder.start();
       setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
     });
