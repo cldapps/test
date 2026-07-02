@@ -3,302 +3,219 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Speech-to-Text API Test Suite</title>
+<title>Cloud Phone Dictation</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0; background: #1e1e1e; color: #eee;
     font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    font-size: 11px; /* Reduced base font for small screens */
+    font-size: 11px; /* Condensed for feature phones */
   }
-  body { padding: 6px; max-width: 100%; margin: 0 auto; }
-  h1 { font-size: 14px; margin: 0 0 4px 0; display: flex; align-items: center; gap: 6px; }
-  .back-btn {
-    text-decoration: none; color: #8ab4f8; font-size: 10px; margin-bottom: 8px; display: inline-block;
-  }
-  .sub { color: #999; font-size: 9px; margin-bottom: 10px; line-height: 1.3; }
+  body { padding: 8px; max-width: 100%; margin: 0 auto; }
+  h1 { font-size: 15px; margin: 0 0 4px 0; }
+  .sub { color: #999; font-size: 10px; margin-bottom: 12px; line-height: 1.3; }
   
-  .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+  .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 6px; padding: 10px; margin-bottom: 10px; }
   .panel-title { font-size: 10px; color: #8ab4f8; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
   
-  .status-tag {
-    display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 9px;
-  }
-  .status-supported { background: #1b3a1f; color: #4caf50; }
-  .status-unsupported { background: #3a1b1b; color: #f44336; }
-  .status-active { background: #1b2e3a; color: #2196f3; animation: pulse 1.5s infinite; }
-  
-  @keyframes pulse {
-    0% { opacity: 0.6; }
-    50% { opacity: 1; }
-    100% { opacity: 0.6; }
-  }
-
-  /* Mobile-first layout for controls */
-  .controls-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-  .control-group { display: flex; flex-direction: row; justify-content: space-between; align-items: center; }
-  label { font-size: 10px; color: #aaa; width: 40%; }
-  select, input {
-    width: 58%; background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; color: #eee; padding: 4px; font-size: 10px;
+  .controls-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  label { font-size: 11px; color: #aaa; margin-bottom: 2px; display: block; }
+  select {
+    width: 100%; background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; color: #eee; padding: 6px; font-size: 12px;
   }
   
-  .btn-row { display: flex; gap: 6px; margin-top: 8px; }
   button {
-    flex: 1; padding: 8px 4px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; font-size: 11px;
-    transition: background 0.1s;
+    width: 100%; padding: 12px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; font-size: 14px;
+    transition: background 0.1s; display: flex; justify-content: center; align-items: center; gap: 6px;
   }
-  .btn-start { background: #4caf50; color: #fff; }
-  .btn-start:hover { background: #43a047; }
-  .btn-stop { background: #f44336; color: #fff; }
-  .btn-stop:hover { background: #e53935; }
-  button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn-primary { background: #3b82f6; color: #fff; }
+  .btn-primary:active { background: #2f6fd6; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .transcript-box {
-    background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 8px; min-height: 50px;
-    font-size: 11px; line-height: 1.4; white-space: pre-wrap; margin-bottom: 6px;
+    background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 8px; min-height: 80px;
+    font-size: 12px; line-height: 1.5; white-space: pre-wrap; color: #fff;
   }
-  .interim { color: #888; font-style: italic; }
   
-  .log-container {
-    background: #141414; border: 1px solid #2a2a2a; border-radius: 4px; max-height: 120px;
-    overflow-y: auto; font-family: monospace; font-size: 9px; padding: 6px;
-  }
-  .log-line { margin-bottom: 4px; display: flex; flex-wrap: wrap; }
-  .log-time { color: #666; margin-right: 4px; width: 60px; flex-shrink: 0; }
-  .log-event { color: #b3e5fc; width: 75px; flex-shrink: 0; font-weight: bold; }
-  .log-msg { color: #eee; flex-basis: 100%; margin-top: 2px; word-break: break-word; }
-  .log-error { color: #ff8a80; }
+  #dictation-status { margin-top: 8px; font-size: 11px; color: #aaa; text-align: center; height: 14px; }
+  .status-ok { color: #4caf50; }
+  .status-err { color: #f44336; }
+  .status-warn { color: #ffb300; }
 </style>
 </head>
 <body>
 
-<a href="index.html" class="back-btn">← Back to Dashboard</a>
-<h1>🗣️ Speech API Test</h1>
-<div class="sub">Validates engine support for SpeechRecognition and maps runtime event lifecycles.</div>
+<h1>🎤 Dictation</h1>
+<div class="sub">Record audio locally and send it to the server for text transcription.</div>
 
 <div class="panel">
-  <div class="panel-title">API Support & Status</div>
-  <div style="display: flex; flex-direction: column; gap: 4px;">
-    <div>Engine: <span id="api-detection">Checking...</span></div>
-    <div>State: <span id="engine-state" class="status-tag" style="background:#333;">Idle</span></div>
-  </div>
-</div>
-
-<div class="panel">
-  <div class="panel-title">Configuration</div>
   <div class="controls-grid">
-    <div class="control-group">
-      <label for="select-lang">Language Tag</label>
-      <select id="select-lang">
-        <option value="en-US">English (US)</option>
-        <option value="en-GB">English (UK)</option>
-        <option value="es-ES">Spanish (Spain)</option>
-        <option value="fr-FR">French (France)</option>
-        <option value="zh-CN">Chinese (Mandarin)</option>
-        <option value="ja-JP">Japanese</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="toggle-continuous">Continuous Mode</label>
-      <select id="toggle-continuous">
-        <option value="true">True</option>
-        <option value="false">False</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="toggle-interim">Interim Results</label>
-      <select id="toggle-interim">
-        <option value="true">True (Live)</option>
-        <option value="false">False (Final)</option>
+    <div>
+      <label for="audio-api-select">Capture Method</label>
+      <select id="audio-api-select">
+        <option value="native-capture">Native OS Recorder (Best for Cloud Phone)</option>
+        <option value="file-upload">File Upload (Choose existing audio)</option>
+        <option value="mr-webm-opus">Inline MediaRecorder (WebM/Opus)</option>
+        <option value="mr-default">Inline MediaRecorder (Browser Default)</option>
       </select>
     </div>
   </div>
   
-  <div class="btn-row">
-    <button id="btn-start" class="btn-start">Start Dictation</button>
-    <button id="btn-stop" class="btn-stop" disabled>Stop</button>
-  </div>
+  <button id="btn-master-dictate" class="btn-primary">
+    🔴 Start Recording
+  </button>
+  
+  <div id="dictation-status">Ready.</div>
 </div>
 
 <div class="panel">
-  <div class="panel-title">Live Transcript Output</div>
-  <div class="transcript-box" id="transcript-output">Waiting to start...</div>
-  <div style="font-size: 9px; color: #888; text-align: right;" id="confidence-metric">Confidence: --</div>
-</div>
-
-<div class="panel">
-  <div class="panel-title">Event Lifecycle Monitor</div>
-  <div class="log-container" id="log-container">
-    <div class="log-line" style="color: #666;">Waiting for engine instantiation...</div>
-  </div>
-  <button id="btn-clear-log" style="margin-top: 8px; padding: 4px 8px; font-size: 10px; width: auto; background: #333; color:#ccc;">Clear Log</button>
+  <div class="panel-title">Transcription Result</div>
+  <div class="transcript-box" id="transcript-output">Waiting for audio...</div>
 </div>
 
 <script>
 (function () {
   'use strict';
 
-  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var recognition = null;
-  var isRecognizing = false;
+  // --- RECORDING IMPLEMENTATIONS ---
 
-  // DOM Elements
-  var apiDetection = document.getElementById('api-detection');
-  var engineState = document.getElementById('engine-state');
-  var selectLang = document.getElementById('select-lang');
-  var toggleContinuous = document.getElementById('toggle-continuous');
-  var toggleInterim = document.getElementById('toggle-interim');
-  var btnStart = document.getElementById('btn-start');
-  var btnStop = document.getElementById('btn-stop');
+  // 1. Native OS File Input (Bypasses Sandbox)
+  function recordViaFileInput(useCapture) {
+    return new Promise(function (resolve, reject) {
+      var input = document.createElement('input');
+      input.type = 'file'; 
+      input.accept = 'audio/*';
+      if (useCapture) input.setAttribute('capture', 'microphone');
+      input.style.display = 'none'; 
+      document.body.appendChild(input);
+      
+      var settled = false;
+      input.addEventListener('change', function () {
+        if (settled) return; settled = true;
+        var file = input.files && input.files[0]; 
+        document.body.removeChild(input);
+        if (!file) { reject(new Error('No file selected (cancelled)')); return; }
+        resolve(file);
+      }, { once: true });
+      
+      input.addEventListener('cancel', function () {
+        if (settled) return; settled = true; 
+        document.body.removeChild(input); 
+        reject(new Error('File dialog cancelled'));
+      }, { once: true });
+      
+      input.click();
+    });
+  }
+
+  // 2. Inline MediaRecorder (For PC/Standard Browsers)
+  function recordViaMediaRecorder(mimeType, durationMs) {
+    durationMs = durationMs || 5000; // 5-second test limit for inline
+    return new Promise(function (resolve, reject) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { 
+        reject(new Error('Live mic access blocked or unsupported here.')); return; 
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        var recorder;
+        try { 
+          recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream); 
+        } catch (err) { 
+          stream.getTracks().forEach(function(t){ t.stop(); }); reject(err); return; 
+        }
+        
+        var chunks = [];
+        recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.onerror = function (e) { 
+          stream.getTracks().forEach(function(t){ t.stop(); }); reject(new Error('MediaRecorder error')); 
+        };
+        recorder.onstop = function () {
+          stream.getTracks().forEach(function(t){ t.stop(); });
+          resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' }));
+        };
+        
+        recorder.start();
+        // Stop automatically after X seconds
+        setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
+      }).catch(reject);
+    });
+  }
+
+  // --- API DEFINITIONS ---
+  var recordingMethods = [
+    { id: 'native-capture', run: function () { return recordViaFileInput(true); } },
+    { id: 'file-upload',    run: function () { return recordViaFileInput(false); } },
+    { id: 'mr-webm-opus',   run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
+    { id: 'mr-default',     run: function () { return recordViaMediaRecorder(null); } }
+  ];
+
+  // --- UI LOGIC ---
+  var apiSelect = document.getElementById('audio-api-select');
+  var btnMasterDictate = document.getElementById('btn-master-dictate');
+  var dictationStatus = document.getElementById('dictation-status');
   var transcriptOutput = document.getElementById('transcript-output');
-  var confidenceMetric = document.getElementById('confidence-metric');
-  var logContainer = document.getElementById('log-container');
-  var btnClearLog = document.getElementById('btn-clear-log');
 
-  // Verify Browser Capability
-  if (!SpeechRecognition) {
-    apiDetection.innerHTML = '<span class="status-tag status-unsupported">Unsupported</span>';
-    btnStart.disabled = true;
-    log('SYSTEM', 'SpeechRecognition API not found in this environment.', true);
-  } else {
-    var engineType = window.SpeechRecognition ? 'Standard' : 'Webkit';
-    apiDetection.innerHTML = '<span class="status-tag status-supported">Supported (' + engineType + ')</span>';
+  function setStatus(msg, className) {
+    dictationStatus.textContent = msg;
+    dictationStatus.className = className || '';
   }
 
-  function log(eventName, message, isError) {
-    if (logContainer.innerHTML === '<div class="log-line" style="color: #666;">Waiting for engine instantiation...</div>') {
-      logContainer.innerHTML = '';
-    }
-    var line = document.createElement('div');
-    line.className = 'log-line';
-    if (isError) line.classList.add('log-error');
-
-    var time = document.createElement('span');
-    time.className = 'log-time';
-    time.textContent = new Date().toISOString().slice(11, 23);
-
-    var ev = document.createElement('span');
-    ev.className = 'log-event';
-    ev.textContent = eventName;
-
-    var msg = document.createElement('span');
-    msg.className = 'log-msg';
-    msg.textContent = message || '';
-
-    line.appendChild(time);
-    line.appendChild(ev);
-    line.appendChild(msg);
-    logContainer.appendChild(line);
-    logContainer.scrollTop = logContainer.scrollHeight;
-  }
-
-  function updateState(state, tagClass) {
-    engineState.textContent = state;
-    engineState.className = 'status-tag ' + (tagClass || '');
-  }
-
-  function initRecognition() {
-    recognition = new SpeechRecognition();
+  btnMasterDictate.addEventListener('click', function() {
+    var selectedId = apiSelect.value;
+    var selectedMethod = null;
     
-    recognition.lang = selectLang.value;
-    recognition.continuous = toggleContinuous.value === 'true';
-    recognition.interimResults = toggleInterim.value === 'true';
-    recognition.maxAlternatives = 1;
-
-    // Attach complete API Event lifecycle hooks
-    recognition.onstart = function() {
-      isRecognizing = true;
-      updateState('Listening', 'status-active');
-      btnStart.disabled = true;
-      btnStop.disabled = false;
-      log('onstart', 'Speech service started.');
-    };
-
-    recognition.onaudiostart = function() { log('onaudiostart', 'Audio hardware init.'); };
-    recognition.onsoundstart = function() { log('onsoundstart', 'Sound input detected.'); };
-    recognition.onspeechstart = function() { log('onspeechstart', 'Human speech detected.'); };
-    
-    recognition.onspeechend = function() { log('onspeechend', 'Speech stopped.'); };
-    recognition.onsoundend = function() { log('onsoundend', 'Sound input stopped.'); };
-    recognition.onaudioend = function() { log('onaudioend', 'Audio hardware closed.'); };
-
-    recognition.onresult = function(event) {
-      log('onresult', 'Result index #' + event.resultIndex);
-      var finalTranscript = '';
-      var interimTranscript = '';
-
-      for (var i = event.resultIndex; i < event.results.length; ++i) {
-        var confidence = event.results[i][0].confidence;
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-          confidenceMetric.textContent = 'Confidence: ' + (confidence * 100).toFixed(1) + '%';
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-
-      if (recognition.continuous) {
-        if (finalTranscript) {
-          if (transcriptOutput.textContent === 'Waiting to start...' || transcriptOutput.innerHTML.indexOf('class="interim"') !== -1) {
-            transcriptOutput.textContent = '';
-          }
-          transcriptOutput.appendChild(document.createTextNode(finalTranscript + ' '));
-        }
-        var interimSpan = transcriptOutput.querySelector('.interim');
-        if (interimSpan) interimSpan.remove();
-        if (interimTranscript) {
-          var span = document.createElement('span');
-          span.className = 'interim';
-          span.textContent = interimTranscript;
-          transcriptOutput.appendChild(span);
-        }
-      } else {
-        transcriptOutput.innerHTML = finalTranscript + '<span class="interim">' + interimTranscript + '</span>';
-      }
-    };
-
-    recognition.onerror = function(event) {
-      log('onerror', 'Error code: ' + event.error, true);
-      if (event.error === 'not-allowed') {
-        transcriptOutput.innerHTML = '<span style="color:#f44336">Microphone access denied or blocked by sandbox.</span>';
-      }
-    };
-
-    recognition.onnomatch = function() {
-      log('onnomatch', 'No linguistic match found.');
-    };
-
-    recognition.onend = function() {
-      isRecognizing = false;
-      updateState('Idle', '');
-      btnStart.disabled = false;
-      btnStop.disabled = true;
-      log('onend', 'Speech engine session closed.');
-    };
-  }
-
-  btnStart.addEventListener('click', function() {
-    if (isRecognizing) return;
-    transcriptOutput.innerHTML = '';
-    confidenceMetric.textContent = 'Confidence: --';
-    log('SYSTEM', 'Initializing engine...');
-    initRecognition();
-    try {
-      recognition.start();
-    } catch (e) {
-      log('EXCEPTION', e.message, true);
+    for (var i=0; i<recordingMethods.length; i++) {
+      if (recordingMethods[i].id === selectedId) selectedMethod = recordingMethods[i];
     }
+    
+    if (!selectedMethod) return;
+
+    // 1. Prepare UI
+    btnMasterDictate.disabled = true;
+    btnMasterDictate.innerHTML = '⏳ Waiting for audio...';
+    setStatus('Opening capture interface...', 'status-warn');
+    transcriptOutput.textContent = 'Recording in progress...';
+    
+    // 2. Trigger Capture
+    selectedMethod.run().then(function(blob) {
+      
+      setStatus('Audio captured! (' + (blob.size / 1024).toFixed(1) + ' KB)', 'status-ok');
+      transcriptOutput.textContent = 'Audio acquired. Ready to send to server...';
+      
+      // ---------------------------------------------------------
+      // 🚀 SERVER UPLOAD LOGIC GOES HERE
+      // ---------------------------------------------------------
+      // Example of how you will eventually send this to your backend:
+      /*
+      var formData = new FormData();
+      formData.append('audioFile', blob, 'dictation.wav');
+      
+      transcriptOutput.textContent = 'Uploading to server...';
+      
+      fetch('https://your-server-url.com/api/transcribe', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        transcriptOutput.textContent = data.transcriptionText;
+      })
+      .catch(err => {
+        transcriptOutput.textContent = 'Server Error: ' + err.message;
+      });
+      */
+      // ---------------------------------------------------------
+
+    }).catch(function(err) {
+      var msg = (err && err.message) ? err.message : String(err);
+      setStatus('Failed: ' + msg, 'status-err');
+      transcriptOutput.textContent = 'Failed to get audio.';
+    }).finally(function() {
+      // 3. Reset Button
+      btnMasterDictate.disabled = false;
+      btnMasterDictate.innerHTML = '🔴 Start Recording';
+    });
   });
 
-  btnStop.addEventListener('click', function() {
-    if (!isRecognizing || !recognition) return;
-    log('SYSTEM', 'Sending manual stop...');
-    recognition.stop();
-  });
-
-  btnClearLog.addEventListener('click', function() {
-    logContainer.innerHTML = '';
-  });
 })();
 </script>
 </body>
