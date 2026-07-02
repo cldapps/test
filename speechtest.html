@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Speech-to-Text API Test Suite</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: #1e1e1e; color: #eee;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-size: 13px;
+  }
+  body { padding: 15px; max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px; }
+  .back-btn {
+    text-decoration: none; color: #8ab4f8; font-size: 12px; margin-bottom: 12px; display: inline-block;
+  }
+  .sub { color: #999; font-size: 11px; margin-bottom: 16px; }
+  .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 8px; padding: 15px; margin-bottom: 12px; }
+  .panel-title { font-size: 12px; color: #8ab4f8; text-transform: uppercase; font-weight: 700; margin-bottom: 12px; }
+  
+  .status-tag {
+    display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;
+  }
+  .status-supported { background: #1b3a1f; color: #4caf50; }
+  .status-unsupported { background: #3a1b1b; color: #f44336; }
+  .status-active { background: #1b2e3a; color: #2196f3; animation: pulse 1.5s infinite; }
+  
+  @keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
+  .controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
+  .control-group { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 11px; color: #aaa; }
+  select, input {
+    background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 6px; color: #eee; padding: 6px; font-size: 13px;
+  }
+  
+  .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+  button {
+    flex: 1; padding: 10px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; font-size: 13px;
+    transition: background 0.1s;
+  }
+  .btn-start { background: #4caf50; color: #fff; }
+  .btn-start:hover { background: #43a047; }
+  .btn-stop { background: #f44336; color: #fff; }
+  .btn-stop:hover { background: #e53935; }
+  button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .transcript-box {
+    background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 6px; padding: 12px; min-height: 80px;
+    font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 10px;
+  }
+  .interim { color: #888; font-style: italic; }
+  
+  .log-container {
+    background: #141414; border: 1px solid #2a2a2a; border-radius: 6px; max-height: 180px;
+    overflow-y: auto; font-family: monospace; font-size: 11px; padding: 8px;
+  }
+  .log-line { margin-bottom: 4px; display: flex; }
+  .log-time { color: #666; margin-right: 8px; width: 75px; flex-shrink: 0; }
+  .log-event { color: #b3e5fc; width: 110px; flex-shrink: 0; font-weight: bold; }
+  .log-msg { color: #eee; flex-grow: 1; }
+  .log-error { color: #ff8a80; }
+</style>
+</head>
+<body>
+
+<a href="index.html" class="back-btn">← Back to Dashboard</a>
+<h1>🗣️ Speech-to-Text API Test Suite</h1>
+<div class="sub">Validates underlying engine support for <code>SpeechRecognition</code> and maps runtime event lifecycles.</div>
+
+<div class="panel">
+  <div class="panel-title">API Support & Status</div>
+  <div style="display: flex; gap: 15px; align-items: center;">
+    <div>Engine Detected: <span id="api-detection">Checking...</span></div>
+    <div>Current State: <span id="engine-state" class="status-tag" style="background:#333;">Idle</span></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Configuration</div>
+  <div class="controls-grid">
+    <div class="control-group">
+      <label for="select-lang">Language Tag</label>
+      <select id="select-lang">
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
+        <option value="es-ES">Spanish (Spain)</option>
+        <option value="fr-FR">French (France)</option>
+        <option value="zh-CN">Chinese (Mandarin)</option>
+        <option value="ja-JP">Japanese</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="toggle-continuous">Continuous Mode</label>
+      <select id="toggle-continuous">
+        <option value="true">True (Keep listening)</option>
+        <option value="false">False (Stop after one phrase)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="toggle-interim">Interim Results</label>
+      <select id="toggle-interim">
+        <option value="true">True (Show live guesses)</option>
+        <option value="false">False (Show final only)</option>
+      </select>
+    </div>
+  </div>
+  
+  <div class="btn-row">
+    <button id="btn-start" class="btn-start">Start Dictation</button>
+    <button id="btn-stop" class="btn-stop" disabled>Stop / Abort</button>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Live Transcript Output</div>
+  <div class="transcript-box" id="transcript-output">Click "Start Dictation" and grant mic permissions to begin speaking...</div>
+  <div style="font-size: 11px; color: #888; text-align: right;" id="confidence-metric">Confidence: --</div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Event Lifecycle Monitor (Diagnostics)</div>
+  <div class="log-container" id="log-container">
+    <div class="log-line" style="color: #666;">Waiting for engine instantiation...</div>
+  </div>
+  <button id="btn-clear-log" style="margin-top: 8px; padding: 4px 8px; font-size: 11px; width: auto; background: #333; color:#ccc;">Clear Diagnostic Log</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognition = null;
+  var isRecognizing = false;
+
+  // DOM Elements
+  var apiDetection = document.getElementById('api-detection');
+  var engineState = document.getElementById('engine-state');
+  var selectLang = document.getElementById('select-lang');
+  var toggleContinuous = document.getElementById('toggle-continuous');
+  var toggleInterim = document.getElementById('toggle-interim');
+  var btnStart = document.getElementById('btn-start');
+  var btnStop = document.getElementById('btn-stop');
+  var transcriptOutput = document.getElementById('transcript-output');
+  var confidenceMetric = document.getElementById('confidence-metric');
+  var logContainer = document.getElementById('log-container');
+  var btnClearLog = document.getElementById('btn-clear-log');
+
+  // Verify Browser Capability
+  if (!SpeechRecognition) {
+    apiDetection.innerHTML = '<span class="status-tag status-unsupported">Unsupported</span>';
+    btnStart.disabled = true;
+    log('SYSTEM', 'SpeechRecognition API not found in this window environment.', true);
+  } else {
+    var engineType = window.SpeechRecognition ? 'Standard native' : 'Webkit prefix vendor';
+    apiDetection.innerHTML = '<span class="status-tag status-supported">Supported (' + engineType + ')</span>';
+  }
+
+  function log(eventName, message, isError) {
+    if (logContainer.innerHTML === '<div class="log-line" style="color: #666;">Waiting for engine instantiation...</div>') {
+      logContainer.innerHTML = '';
+    }
+    var line = document.createElement('div');
+    line.className = 'log-line';
+    if (isError) line.classList.add('log-error');
+
+    var time = document.createElement('span');
+    time.className = 'log-time';
+    time.textContent = new Date().toISOString().slice(11, 23);
+
+    var ev = document.createElement('span');
+    ev.className = 'log-event';
+    ev.textContent = eventName;
+
+    var msg = document.createElement('span');
+    msg.className = 'log-msg';
+    msg.textContent = message || '';
+
+    line.appendChild(time);
+    line.appendChild(ev);
+    line.appendChild(msg);
+    logContainer.appendChild(line);
+    logContainer.scrollTop = logContainer.scrollHeight;
+  }
+
+  function updateState(state, tagClass) {
+    engineState.textContent = state;
+    engineState.className = 'status-tag ' + (tagClass || '');
+  }
+
+  function initRecognition() {
+    recognition = new SpeechRecognition();
+    
+    recognition.lang = selectLang.value;
+    recognition.continuous = toggleContinuous.value === 'true';
+    recognition.interimResults = toggleInterim.value === 'true';
+    recognition.maxAlternatives = 1;
+
+    // Attach complete API Event lifecycle hooks
+    recognition.onstart = function() {
+      isRecognizing = true;
+      updateState('Listening', 'status-active');
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      log('onstart', 'Speech service has started execution loop.');
+    };
+
+    recognition.onaudiostart = function() { log('onaudiostart', 'Audio capturing hardware initialized.'); };
+    recognition.onsoundstart = function() { log('onsoundstart', 'Sound input detection triggered.'); };
+    recognition.onspeechstart = function() { log('onspeechstart', 'Human speech patterns recognized.'); };
+    
+    recognition.onspeechend = function() { log('onspeechend', 'Speech has ceased.'); };
+    recognition.onsoundend = function() { log('onsoundend', 'Sound input has ceased.'); };
+    recognition.onaudioend = function() { log('onaudioend', 'Audio hardware capturing closed.'); };
+
+    recognition.onresult = function(event) {
+      log('onresult', 'Result index #' + event.resultIndex + ', total items: ' + event.results.length);
+      var finalTranscript = '';
+      var interimTranscript = '';
+
+      for (var i = event.resultIndex; i < event.results.length; ++i) {
+        var confidence = event.results[i][0].confidence;
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+          confidenceMetric.textContent = 'Confidence: ' + (confidence * 100).toFixed(1) + '%';
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
+      if (recognition.continuous) {
+        if (finalTranscript) {
+          if (transcriptOutput.textContent === 'Click "Start Dictation" and grant mic permissions to begin speaking...' || transcriptOutput.innerHTML.indexOf('class="interim"') !== -1) {
+            transcriptOutput.textContent = '';
+          }
+          transcriptOutput.appendChild(document.createTextNode(finalTranscript + ' '));
+        }
+        // Handle interim overlay update
+        var interimSpan = transcriptOutput.querySelector('.interim');
+        if (interimSpan) interimSpan.remove();
+        if (interimTranscript) {
+          var span = document.createElement('span');
+          span.className = 'interim';
+          span.textContent = interimTranscript;
+          transcriptOutput.appendChild(span);
+        }
+      } else {
+        transcriptOutput.innerHTML = finalTranscript + '<span class="interim">' + interimTranscript + '</span>';
+      }
+    };
+
+    recognition.onerror = function(event) {
+      log('onerror', 'Error error-code detected: ' + event.error, true);
+      if (event.error === 'not-allowed') {
+        alert('Permission Error: Microphone access denied or blocked by cloud container sandbox policy.');
+      }
+    };
+
+    recognition.onnomatch = function() {
+      log('onnomatch', 'Audio processed but structure could not be mapped to linguistic grammar rules.');
+    };
+
+    recognition.onend = function() {
+      isRecognizing = false;
+      updateState('Idle', '');
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      log('onend', 'Speech engine session closed connection.');
+    };
+  }
+
+  btnStart.addEventListener('click', function() {
+    if (isRecognizing) return;
+    transcriptOutput.innerHTML = '';
+    confidenceMetric.textContent = 'Confidence: --';
+    log('SYSTEM', 'Initializing engine instance parameters...');
+    initRecognition();
+    try {
+      recognition.start();
+    } catch (e) {
+      log('EXCEPTION', e.message, true);
+    }
+  });
+
+  btnStop.addEventListener('click', function() {
+    if (!isRecognizing || !recognition) return;
+    log('SYSTEM', 'Sending manual stop directive...');
+    recognition.stop();
+  });
+
+  btnClearLog.addEventListener('click', function() {
+    logContainer.innerHTML = '';
+  });
+})();
+</script>
+</body>
+</html>
