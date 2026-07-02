@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Audio API Test Suite — AgentMae</title>
+<title>Cloud Phone Test Suite</title>
 <style>
   * { box-sizing: border-box; }
   html, body {
@@ -12,764 +12,169 @@
     font-size: 13px;
   }
   body { padding: 10px; }
-  h1 { font-size: 16px; margin: 0 0 4px 0; }
-  h2 { font-size: 13px; margin: 18px 0 6px 0; color: #8ab4f8; border-bottom: 1px solid #333; padding-bottom: 4px; }
-  .sub { color: #999; font-size: 11px; margin-bottom: 10px; }
+  h1 { font-size: 18px; margin: 4px 0 4px 0; }
+  .sub { color: #999; font-size: 11px; margin-bottom: 16px; }
   .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-  .env-grid { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12px; }
-  .env-grid .k { color: #bbb; }
-  .ok { color: #4caf50; font-weight: bold; }
-  .bad { color: #f44336; font-weight: bold; }
-  .warn { color: #ffb300; font-weight: bold; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
-  .card {
-    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
-    display: flex; flex-direction: column; gap: 6px;
+  .search {
+    width: 100%; background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 6px;
+    color: #eee; padding: 8px 10px; font-size: 13px; margin-bottom: 12px;
   }
-  .card .cat { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .03em; }
-  .card .name { font-size: 12.5px; font-weight: 600; }
-  .card .status { font-size: 11px; min-height: 14px; color: #aaa; }
-  button {
-    background: #3b3b3b; color: #fff; border: 1px solid #4a4a4a; border-radius: 6px;
-    padding: 6px 8px; font-size: 12px; cursor: pointer;
+  .search:focus { outline: none; border-color: #3b82f6; }
+  .group { margin-bottom: 18px; }
+  .group-title {
+    font-size: 11px; color: #8ab4f8; text-transform: uppercase; letter-spacing: .04em;
+    margin: 0 0 8px 2px; font-weight: 700;
   }
-  button:hover { background: #474747; }
-  button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: #3b82f6; border-color: #3b82f6; }
-  button.primary:hover { background: #2f6fd6; }
-  button.danger { background: #5a2a2a; border-color: #7a3a3a; }
-  .rec-row {
-    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
-    margin-bottom: 8px; font-size: 12px;
+  .test-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+  a.test-card {
+    display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit;
+    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 10px; padding: 12px;
+    transition: border-color .12s, background .12s;
   }
-  .rec-row .meta { color: #999; font-size: 11px; margin: 2px 0 6px 0; }
-  .rec-row audio { width: 100%; height: 30px; margin-bottom: 6px; }
-  .rec-row .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
-  table.matrix { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 11px; }
-  table.matrix th, table.matrix td {
-    border: 1px solid #3a3a3a; padding: 4px 6px; text-align: center; white-space: nowrap;
+  a.test-card:hover { border-color: #3b82f6; background: #303030; }
+  .test-card .top-row { display: flex; align-items: center; gap: 8px; }
+  .test-card .icon { font-size: 20px; line-height: 1; }
+  .test-card .name { font-size: 13.5px; font-weight: 700; flex: 1; }
+  .test-card .badge {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: .03em; font-weight: 700;
+    padding: 2px 6px; border-radius: 999px; white-space: nowrap;
   }
-  table.matrix th { background: #2c2c2c; position: sticky; top: 0; }
-  table.matrix th.rowhead, table.matrix td.rowhead {
-    text-align: left; position: sticky; left: 0; background: #262626; max-width: 220px;
-    white-space: normal; font-weight: 600;
-  }
-  .matrix-wrap { overflow: auto; max-height: 400px; border: 1px solid #3a3a3a; border-radius: 6px; }
-  .cell-status { font-size: 14px; }
-  .cell-confirm { font-size: 11px; margin-top: 2px; padding: 1px 4px; }
-  .status-pass { background: #1b3a1f; }
-  .status-fail { background: #3a1b1b; }
-  .status-unsupported { background: #2a2a3a; }
-  .status-timeout { background: #3a341b; }
-  .status-untested { background: transparent; }
-  .confirm-audible { outline: 2px solid #4caf50; }
-  .confirm-silent { outline: 2px solid #f44336; }
-  #log {
-    background: #111; border: 1px solid #3a3a3a; border-radius: 6px; padding: 6px;
-    height: 160px; overflow-y: auto; font-family: monospace; font-size: 11px; white-space: pre-wrap;
-  }
-  .log-err { color: #f88; }
-  .log-ok { color: #8f8; }
-  .log-info { color: #9cf; }
-  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .badge-ready { background: #1b3a1f; color: #4caf50; }
+  .badge-draft { background: #3a341b; color: #ffb300; }
+  .badge-planned { background: #2a2a3a; color: #8ab4f8; }
+  .test-card .desc { font-size: 11.5px; color: #aaa; line-height: 1.4; }
+  .test-card .file { font-size: 10px; color: #666; font-family: monospace; margin-top: 2px; }
   .empty-note { color: #888; font-size: 12px; padding: 8px; }
-  .qt-row {
-    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
-    border-bottom: 1px solid #333;
+  .add-card {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    background: transparent; border: 1px dashed #444; border-radius: 10px; padding: 12px;
+    color: #777; font-size: 11.5px; line-height: 1.5;
   }
-  .qt-row:last-child { border-bottom: none; }
-  .qt-name { flex: 1; font-size: 12.5px; }
-  .qt-status { min-width: 26px; font-size: 15px; text-align: center; }
-  .qt-detail { font-size: 10.5px; color: #999; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body>
 
-<h1>🎙 Audio API Test Suite</h1>
-<div class="sub">Tests every recording API × every playback API on this device/browser, so you can see exactly which combinations actually work on Cloud Phone (or wherever this is loaded).</div>
+<h1>📱 Cloud Phone Test Suite</h1>
+<div class="sub">A growing collection of API compatibility test pages for Cloud Phone (and wherever else this gets loaded). Pick a suite below to run its tests.</div>
 
-<h2>Environment</h2>
-<div class="panel">
-  <div class="env-grid" id="env-grid"></div>
-</div>
+<input class="search" id="search-box" type="text" placeholder="Filter tests… (e.g. &quot;video&quot;, &quot;storage&quot;, &quot;draft&quot;)" autocomplete="off">
 
-<h2>Recording Methods</h2>
-<div class="panel">
-  <div class="cards" id="rec-cards"></div>
-</div>
-
-<h2>Recordings <span style="color:#888;font-weight:normal;">(captured samples, ready to test playback on)</span></h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="clear-recordings" class="danger">Clear all recordings</button>
-  </div>
-  <div id="recordings-list"><div class="empty-note">No recordings yet — use a method above.</div></div>
-</div>
-
-<h2>Quick Player Test <span style="color:#888;font-weight:normal;">(tests the last recording on each player, one click at a time)</span></h2>
-<div class="panel">
-  <div class="sub" id="quick-test-target">No recording yet — record something above first.</div>
-  <div id="quick-test-list"></div>
-</div>
-
-<h2>Compatibility Matrix</h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="run-full-matrix" class="primary">▶ Run full matrix</button>
-    <button id="clear-matrix">Reset matrix statuses</button>
-  </div>
-  <div class="sub">
-    ✅/❌ = the API call itself succeeded/failed without error. Some platforms accept a play() call but produce no actual sound —
-    after a row plays, click the small ❔ button under a cell and listen, then mark 🔊 Audible or 🔇 Silent for the real verdict.
-  </div>
-  <div class="matrix-wrap"><table class="matrix" id="matrix-table"></table></div>
-</div>
-
-<h2>Activity Log</h2>
-<div class="panel">
-  <div class="toolbar">
-    <button id="copy-log">Copy log</button>
-    <button id="export-json">Export results JSON</button>
-    <button id="clear-log">Clear log</button>
-  </div>
-  <div id="log"></div>
-</div>
+<div id="groups"></div>
 
 <script>
 (function () {
   'use strict';
 
-  // ───────────────────────── Status glyphs (declared first, used everywhere) ─────────────────────────
-  var statusGlyph = { pass: '✅', fail: '❌', unsupported: '🚫', timeout: '⏱', untested: '–' };
-
-  // ───────────────────────── Logging ─────────────────────────
-  var logEl = document.getElementById('log');
-  function log(msg, level) {
-    var line = document.createElement('div');
-    line.className = level ? ('log-' + level) : '';
-    var t = new Date().toLocaleTimeString();
-    line.textContent = '[' + t + '] ' + msg;
-    logEl.appendChild(line);
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-
-  document.getElementById('copy-log').addEventListener('click', function () {
-    var text = Array.prototype.map.call(logEl.children, function (el) { return el.textContent; }).join('\n');
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { log('Log copied to clipboard', 'ok'); });
-    } else {
-      log('Clipboard API not available — select and copy manually', 'warn');
+  // ─────────────────────────────────────────────────────────────────
+  // TEST REGISTRY — add a new test page by adding one object here.
+  //   id:       unique string
+  //   name:     display name
+  //   file:     relative path to the page (must sit next to this index.html)
+  //   icon:     an emoji shown on the card
+  //   category: groups cards under a heading
+  //   status:   'ready' | 'draft' | 'planned'  (controls the badge + whether it's clickable)
+  //   desc:     one or two sentence summary of what it covers
+  // ─────────────────────────────────────────────────────────────────
+  var TESTS = [
+    {
+      id: 'audio',
+      name: 'Audio API Test Suite',
+      file: 'audtest.html',
+      icon: '🎙',
+      category: 'Media',
+      status: 'ready',
+      desc: 'Every recording API × every playback API for audio — MediaRecorder, Web Audio PCM, file input capture, Blob URL / Data URI / MediaSource playback, with an audible/silent confirmation matrix.'
+    },
+    {
+      id: 'video',
+      name: 'Video API Test Suite',
+      file: 'vidtest.html',
+      icon: '🎬',
+      category: 'Media',
+      status: 'ready',
+      desc: 'Every recording API × every playback API for video — camera capture, a built-in synthetic sample-video generator (no camera needed), and a blank-frame detector alongside the usual playback matrix.'
     }
-  });
-  document.getElementById('clear-log').addEventListener('click', function () { logEl.innerHTML = ''; });
-
-  // ───────────────────────── Environment panel ─────────────────────────
-  var envGrid = document.getElementById('env-grid');
-  function envRow(label, ok, detail) {
-    var k = document.createElement('div'); k.className = 'k'; k.textContent = label;
-    var v = document.createElement('div');
-    v.className = ok === true ? 'ok' : (ok === false ? 'bad' : 'warn');
-    v.textContent = (detail !== undefined ? detail : (ok ? 'yes' : 'no'));
-    envGrid.appendChild(k); envGrid.appendChild(v);
-  }
-
-  function renderEnv() {
-    envGrid.innerHTML = '';
-    envRow('URL', true, location.href);
-    envRow('Protocol', location.protocol === 'https:' || location.hostname === 'localhost', location.protocol);
-    envRow('Secure context (window.isSecureContext)', !!window.isSecureContext);
-    envRow('navigator.mediaDevices', !!(navigator.mediaDevices));
-    envRow('navigator.mediaDevices.getUserMedia', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
-    envRow('MediaRecorder API', typeof MediaRecorder !== 'undefined');
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
-      ['audio/webm;codecs=opus', 'audio/mp4;codecs=mp4a.40.2', 'audio/ogg;codecs=opus', 'audio/wav'].forEach(function (m) {
-        envRow('  isTypeSupported(' + m + ')', MediaRecorder.isTypeSupported(m));
-      });
-    }
-    envRow('AudioContext (Web Audio API)', !!(window.AudioContext || window.webkitAudioContext));
-    envRow('MediaSource Extensions', typeof MediaSource !== 'undefined');
-    envRow('SpeechRecognition (dictation)', !!(window.SpeechRecognition || window.webkitSpeechRecognition));
-    envRow('navigator.volumeManager (Cloud Phone)', !!navigator.volumeManager);
-    envRow('navigator.hasFeature (Cloud Phone)', typeof navigator.hasFeature === 'function');
-    if (typeof navigator.hasFeature === 'function') {
-      ['AudioCapture', 'AudioPlayback', 'AudioSeek', 'AudioUpload'].forEach(function (feature) {
-        var k = document.createElement('div'); k.className = 'k'; k.textContent = '  hasFeature("' + feature + '")';
-        var v = document.createElement('div'); v.className = 'warn'; v.textContent = 'checking…';
-        envGrid.appendChild(k); envGrid.appendChild(v);
-        navigator.hasFeature(feature).then(function (s) { v.className = s ? 'ok' : 'bad'; v.textContent = s ? 'yes' : 'no'; })
-          .catch(function (e) { v.className = 'bad'; v.textContent = 'error: ' + e.message; });
-      });
-    }
-  }
-  renderEnv();
-
-  // ───────────────────────── Shared helpers ─────────────────────────
-  function blobArrayBuffer(blob) {
-    if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
-    return new Promise(function (resolve, reject) {
-      var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.onerror = reject; r.readAsArrayBuffer(blob);
-    });
-  }
-  function blobToDataURL(blob) {
-    return new Promise(function (resolve, reject) {
-      var r = new FileReader(); r.onloadend = function () { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(blob);
-    });
-  }
-
-  function raceOutcome(mediaEl, timeoutMs) {
-    timeoutMs = timeoutMs || 6000;
-    return new Promise(function (resolve) {
-      var settled = false;
-      function cleanup() { clearTimeout(timer); mediaEl.removeEventListener('playing', onPlaying); mediaEl.removeEventListener('error', onError); }
-      function onPlaying() { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'playing event fired' }); }
-      function onError() {
-        if (settled) return; settled = true; cleanup();
-        var err = mediaEl.error;
-        resolve({ status: 'fail', detail: err ? ('MediaError code ' + err.code) : 'error event fired' });
-      }
-      var timer = setTimeout(function () {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'timeout', detail: 'no playing/error event within ' + timeoutMs + 'ms' });
-      }, timeoutMs);
-      mediaEl.addEventListener('playing', onPlaying);
-      mediaEl.addEventListener('error', onError);
-      var p;
-      try { p = mediaEl.play(); } catch (err) {
-        if (settled) return; settled = true; cleanup();
-        resolve({ status: 'fail', detail: (err && err.message) ? err.message : String(err) }); return;
-      }
-      if (p && typeof p.catch === 'function') {
-        p.catch(function (err) {
-          if (settled) return; settled = true; cleanup();
-          resolve({ status: 'fail', detail: (err && err.name) ? (err.name + ': ' + err.message) : String(err) });
-        });
-      }
-    });
-  }
-
-  // ───────────────────────── WAV encoder ─────────────────────────
-  function encodeWAV(samples, sampleRate) {
-    var buffer = new ArrayBuffer(44 + samples.length * 2);
-    var view = new DataView(buffer);
-    function ws(offset, str) { for (var i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
-    ws(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
-    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, 'data');
-    view.setUint32(40, samples.length * 2, true);
-    var offset = 44;
-    for (var i = 0; i < samples.length; i++, offset += 2) {
-      var s = Math.max(-1, Math.min(1, samples[i]));
-      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    }
-    return new Blob([view], { type: 'audio/wav' });
-  }
-
-  // ───────────────────────── Recording implementations ─────────────────────────
-  function recordViaMediaRecorder(mimeType, durationMs) {
-    durationMs = durationMs || 4000;
-    return new Promise(function (resolve, reject) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available (insecure context or unsupported browser)')); return; }
-      if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
-      if (mimeType && MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)) { reject(new Error('MediaRecorder.isTypeSupported() is false for: ' + mimeType)); return; }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-        var recorder;
-        try { recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream); }
-        catch (err) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(err); return; }
-        var chunks = [];
-        recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
-        recorder.onerror = function (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
-        recorder.onstop = function () {
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' }));
-        };
-        recorder.start();
-        setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
-      }).catch(reject);
-    });
-  }
-
-  function recordViaWebAudioPCM(durationMs) {
-    durationMs = durationMs || 4000;
-    return new Promise(function (resolve, reject) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) { reject(new Error('AudioContext not available on this platform')); return; }
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available')); return; }
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-        var ctx; try { ctx = new AC(); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(e); return; }
-        var source, processor, mute;
-        try {
-          source = ctx.createMediaStreamSource(stream);
-          processor = ctx.createScriptProcessor(4096, 1, 1);
-          mute = ctx.createGain(); mute.gain.value = 0;
-        } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); try { ctx.close(); } catch (_) {} reject(e); return; }
-        var chunks = [], finished = false;
-        processor.onaudioprocess = function (e) { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
-        source.connect(processor); processor.connect(mute); mute.connect(ctx.destination);
-        function finish() {
-          if (finished) return; finished = true;
-          try { processor.disconnect(); } catch (_) {} try { source.disconnect(); } catch (_) {}
-          stream.getTracks().forEach(function (t) { t.stop(); });
-          var total = chunks.reduce(function (a, c) { return a + c.length; }, 0);
-          if (total === 0) { try { ctx.close(); } catch (_) {} reject(new Error('No samples captured — ScriptProcessorNode likely unsupported')); return; }
-          var merged = new Float32Array(total), off = 0;
-          chunks.forEach(function (c) { merged.set(c, off); off += c.length; });
-          var blob = encodeWAV(merged, ctx.sampleRate);
-          try { ctx.close(); } catch (_) {} resolve(blob);
-        }
-        setTimeout(finish, durationMs);
-      }).catch(reject);
-    });
-  }
-
-  function recordViaFileInput(useCapture) {
-    return new Promise(function (resolve, reject) {
-      var input = document.createElement('input');
-      input.type = 'file'; input.accept = 'audio/*';
-      if (useCapture) input.setAttribute('capture', 'microphone');
-      input.style.display = 'none'; document.body.appendChild(input);
-      var settled = false;
-      input.addEventListener('change', function () {
-        if (settled) return; settled = true;
-        var file = input.files && input.files[0]; document.body.removeChild(input);
-        if (!file) { reject(new Error('No file selected (cancelled)')); return; }
-        resolve(file);
-      }, { once: true });
-      input.addEventListener('cancel', function () {
-        if (settled) return; settled = true; document.body.removeChild(input); reject(new Error('File dialog cancelled'));
-      }, { once: true });
-      input.click();
-    });
-  }
-
-  // ── Recording methods: 5 primary + 3 "known unsupported" probes — no duplicates ──
-  var recordingMethods = [
-    { id: 'mr-webm-opus',  name: 'MediaRecorder — WebM/Opus',                     cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/webm;codecs=opus'); } },
-    { id: 'mr-default',    name: 'MediaRecorder — Browser Default',                cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder(null); } },
-    { id: 'webaudio-pcm',  name: 'Web Audio PCM → WAV (ScriptProcessorNode)',      cat: 'getUserMedia + Web Audio',        run: function () { return recordViaWebAudioPCM(); } },
-    { id: 'native-capture',name: 'Native System Recorder (capture=microphone)',    cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(true); } },
-    { id: 'file-upload',   name: 'Audio File Upload (no capture)',                 cat: 'File Input (like dictate flow)',  run: function () { return recordViaFileInput(false); } },
-    { id: 'mr-mp4-aac',   name: 'MediaRecorder — MP4/AAC ⚠️ known unsupported',  cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/mp4;codecs=mp4a.40.2'); } },
-    { id: 'mr-ogg-opus',  name: 'MediaRecorder — Ogg/Opus ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/ogg;codecs=opus'); } },
-    { id: 'mr-wav',       name: 'MediaRecorder — WAV ⚠️ known unsupported',       cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorder('audio/wav'); } }
   ];
 
-  // ───────────────────────── Playback implementations ─────────────────────────
-  function playAudioElementBlobUrl(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playAudioElementDataUri(blob) {
-    return blobToDataURL(blob).then(function (dataUrl) {
-      var audio = document.createElement('audio');
-      audio.style.display = 'none'; document.body.appendChild(audio); audio.src = dataUrl;
-      return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); });
+  // ─────────────────────────────────────────────────────────────────
+
+  var statusBadge = { ready: ['badge-ready', 'Ready'], draft: ['badge-draft', 'Draft'], planned: ['badge-planned', 'Planned'] };
+
+  var groupsEl = document.getElementById('groups');
+  var searchBox = document.getElementById('search-box');
+
+  function render(filterText) {
+    groupsEl.innerHTML = '';
+    var q = (filterText || '').trim().toLowerCase();
+
+    var filtered = TESTS.filter(function (t) {
+      if (!q) return true;
+      return (t.name + ' ' + t.desc + ' ' + t.category + ' ' + t.status).toLowerCase().indexOf(q) !== -1;
     });
-  }
-  function playJsAudioObject(blob) {
-    var url = URL.createObjectURL(blob), audio = new Audio(url);
-    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
-  }
-  function playAudioSourceElement(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio'), source = document.createElement('source');
-    audio.style.display = 'none'; source.src = url; source.type = blob.type || 'audio/webm';
-    audio.appendChild(source); document.body.appendChild(audio); audio.load();
-    return raceOutcome(audio).finally(function () { audio.pause(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playViaWebAudioDecode(blob) {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return Promise.resolve({ status: 'unsupported', detail: 'AudioContext not available' });
-    var ctx = new AC();
-    return blobArrayBuffer(blob).then(function (ab) {
-      return new Promise(function (res, rej) {
-        var p = ctx.decodeAudioData(ab.slice(0), res, rej);
-        if (p && typeof p.then === 'function') p.then(res, rej);
-      });
-    }).then(function (audioBuf) {
-      var src = ctx.createBufferSource(); src.buffer = audioBuf; src.connect(ctx.destination); src.start(0);
-      return new Promise(function (res) { setTimeout(res, 300); }).then(function () {
-        return { status: 'pass', detail: 'decoded & started (' + audioBuf.duration.toFixed(2) + 's) — confirm audibly' };
-      });
-    }).catch(function (e) { return { status: 'fail', detail: (e && e.message) ? e.message : String(e) }; })
-      .finally(function () { setTimeout(function () { try { ctx.close(); } catch (_) {} }, 4000); });
-  }
-  function playViaVideoElement(blob) {
-    var url = URL.createObjectURL(blob), video = document.createElement('video');
-    video.style.display = 'none'; document.body.appendChild(video); video.src = url;
-    return raceOutcome(video).finally(function () { video.pause(); document.body.removeChild(video); URL.revokeObjectURL(url); });
-  }
-  function playViaIframe(blob) {
-    var url = URL.createObjectURL(blob);
-    return new Promise(function (resolve) {
-      var settled = false, iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      var timer = setTimeout(function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'timeout', detail: 'iframe did not fire load/error within 6s' }); }, 6000);
-      function cleanup() { clearTimeout(timer); document.body.removeChild(iframe); URL.revokeObjectURL(url); }
-      iframe.onload = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'iframe loaded native player — confirm audibly' }); };
-      iframe.onerror = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'fail', detail: 'iframe error event' }); };
-      iframe.src = url; document.body.appendChild(iframe);
-    });
-  }
-  function playViaMediaSource(blob) {
-    if (typeof MediaSource === 'undefined') return Promise.resolve({ status: 'unsupported', detail: 'MediaSource is not defined' });
-    return new Promise(function (resolve) {
-      var settled = false, mediaSource, audio, url, timer;
-      function finish(result) {
-        if (settled) return; settled = true; clearTimeout(timer);
-        try { audio.pause(); } catch (_) {} try { document.body.removeChild(audio); } catch (_) {} try { URL.revokeObjectURL(url); } catch (_) {}
-        resolve(result);
-      }
-      try {
-        mediaSource = new MediaSource(); audio = document.createElement('audio'); audio.style.display = 'none';
-        document.body.appendChild(audio); url = URL.createObjectURL(mediaSource); audio.src = url;
-        timer = setTimeout(function () { finish({ status: 'timeout', detail: 'sourceopen/playing not reached within 6s' }); }, 6000);
-        mediaSource.addEventListener('sourceopen', function () {
-          try {
-            var mime = blob.type || 'audio/webm;codecs=opus';
-            if (!MediaSource.isTypeSupported(mime)) { finish({ status: 'unsupported', detail: 'MediaSource.isTypeSupported() false for ' + mime }); return; }
-            var sb = mediaSource.addSourceBuffer(mime);
-            blobArrayBuffer(blob).then(function (ab) {
-              sb.addEventListener('updateend', function () { try { mediaSource.endOfStream(); } catch (_) {} }, { once: true });
-              sb.appendBuffer(ab); raceOutcome(audio).then(finish);
-            }).catch(function (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); });
-          } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
-        }, { once: true });
-      } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
-    });
-  }
 
-  // Cloud Phone audio channel unlock
-  function unlockCloudPhoneAudioChannel() {
-    if (!window._testSuiteAudioCtx) {
-      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
-    }
-    if (window._testSuiteAudioCtx && window._testSuiteAudioCtx.state === 'suspended') {
-      try { window._testSuiteAudioCtx.resume(); } catch (_) {}
-    }
-    if (navigator.volumeManager && navigator.volumeManager.requestUp) { try { navigator.volumeManager.requestUp(); } catch (_) {} }
-  }
-  function playAudioElementBlobUrlUnlocked(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-  function playJsAudioObjectUnlocked(blob) {
-    var url = URL.createObjectURL(blob), audio = new Audio(url);
-    unlockCloudPhoneAudioChannel();
-    return raceOutcome(audio).finally(function () { audio.pause(); URL.revokeObjectURL(url); });
-  }
-  function playAudioElementUnlockThenPlay(blob) {
-    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
-    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
-    audio.addEventListener('play', unlockCloudPhoneAudioChannel, { once: true });
-    return raceOutcome(audio).finally(function () { audio.pause(); audio.removeAttribute('src'); audio.load(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
-  }
-
-  function wrapPlayback(fn) {
-    return function (blob) {
-      return Promise.resolve().then(function () { return fn(blob); })
-        .catch(function (err) { return { status: 'fail', detail: (err && err.message) ? err.message : String(err) }; });
-    };
-  }
-
-  // ── Playback methods: plain-text names (no HTML tags — they go into textContent) ──
-  // knownFail: true  = confirmed broken on Cloud Phone (pre-marked ❌ in matrix)
-  // knownFail: false = confirmed working
-  var playbackMethods = [
-    { id: 'audio-bloburl',        name: 'audio element + Blob URL',                           knownFail: false, run: wrapPlayback(playAudioElementBlobUrl) },
-    { id: 'audio-bloburl-unlock', name: 'audio element + Blob URL + Unlock (pre-play)',        knownFail: false, run: wrapPlayback(playAudioElementBlobUrlUnlocked) },
-    { id: 'audio-unlock-onplay',  name: 'audio element + Unlock on "play" event (app.js)',     knownFail: false, run: wrapPlayback(playAudioElementUnlockThenPlay) },
-    { id: 'audio-datauri',        name: 'audio element + Data URI ⚠️ known broken',            knownFail: true,  run: wrapPlayback(playAudioElementDataUri) },
-    { id: 'js-audio-obj',         name: 'new Audio() + Blob URL',                             knownFail: false, run: wrapPlayback(playJsAudioObject) },
-    { id: 'js-audio-obj-unlock',  name: 'new Audio() + Blob URL + Unlock',                    knownFail: false, run: wrapPlayback(playJsAudioObjectUnlocked) },
-    { id: 'audio-source',         name: 'audio + child source element',                       knownFail: false, run: wrapPlayback(playAudioSourceElement) },
-    { id: 'webaudio-decode',      name: 'Web Audio decodeAudioData ⚠️ known broken',           knownFail: true,  run: wrapPlayback(playViaWebAudioDecode) },
-    { id: 'video-element',        name: 'video element (audio-only blob)',                    knownFail: false, run: wrapPlayback(playViaVideoElement) },
-    { id: 'iframe-embed',         name: 'iframe native player ⚠️ known broken',               knownFail: true,  run: wrapPlayback(playViaIframe) },
-    { id: 'media-source',         name: 'MediaSource Extensions ⚠️ known broken',             knownFail: true,  run: wrapPlayback(playViaMediaSource) }
-  ];
-
-  // ───────────────────────── Recording cards UI ─────────────────────────
-  var recCardsEl = document.getElementById('rec-cards');
-  var recordings = [];
-  var lastRecording = null;
-
-  recordingMethods.forEach(function (method) {
-    var card = document.createElement('div'); card.className = 'card';
-    // Use textContent for all user-visible strings to avoid HTML injection issues
-    var catEl = document.createElement('div'); catEl.className = 'cat'; catEl.textContent = method.cat;
-    var nameEl = document.createElement('div'); nameEl.className = 'name'; nameEl.textContent = method.name;
-    var statusEl = document.createElement('div'); statusEl.className = 'status'; statusEl.textContent = 'idle';
-    var btn = document.createElement('button'); btn.textContent = 'Record';
-    card.appendChild(catEl); card.appendChild(nameEl); card.appendChild(statusEl); card.appendChild(btn);
-    recCardsEl.appendChild(card);
-
-    btn.addEventListener('click', function () {
-      btn.disabled = true;
-      var isFile = (method.id === 'native-capture' || method.id === 'file-upload');
-      statusEl.textContent = isFile ? 'waiting for file dialog…' : 'recording (4s)…';
-      statusEl.className = 'status warn';
-      log('Starting: ' + method.name);
-      method.run().then(function (blob) {
-        statusEl.className = 'status ok';
-        statusEl.textContent = 'OK — ' + (blob.type || 'unknown') + ', ' + (blob.size / 1024).toFixed(1) + ' KB';
-        log('OK via "' + method.name + '" type=' + blob.type + ' size=' + blob.size + 'B', 'ok');
-        addRecording(method, blob);
-      }).catch(function (err) {
-        statusEl.className = 'status bad';
-        var msg = (err && err.message) ? err.message : String(err);
-        statusEl.textContent = 'FAILED — ' + msg;
-        log('FAILED "' + method.name + '": ' + msg, 'err');
-      }).finally(function () { btn.disabled = false; });
-    });
-  });
-
-  // ───────────────────────── Quick Player Test UI ─────────────────────────
-  var quickTargetEl = document.getElementById('quick-test-target');
-  var quickListEl = document.getElementById('quick-test-list');
-
-  function renderQuickTest() {
-    quickListEl.innerHTML = '';
-    if (!lastRecording) {
-      quickTargetEl.textContent = 'No recording yet — record something above first.';
+    if (filtered.length === 0) {
+      var empty = document.createElement('div'); empty.className = 'empty-note';
+      empty.textContent = 'No tests match "' + filterText + '".';
+      groupsEl.appendChild(empty);
       return;
     }
-    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName +
-      ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
 
-    playbackMethods.forEach(function (pm) {
-      var row = document.createElement('div'); row.className = 'qt-row';
-
-      var nameEl = document.createElement('div'); nameEl.className = 'qt-name';
-      nameEl.textContent = pm.name;  // textContent — safe, no HTML parsing
-
-      var detailEl = document.createElement('div'); detailEl.className = 'qt-detail';
-      var statusEl = document.createElement('div'); statusEl.className = 'qt-status'; statusEl.textContent = '–';
-
-      var confirmBtn = document.createElement('button');
-      confirmBtn.textContent = '❔'; confirmBtn.style.display = 'none';
-      confirmBtn.title = 'Cycles: Unconfirmed → 🔊 Audible → 🔇 Silent';
-      var cState = 0;
-      confirmBtn.addEventListener('click', function () {
-        cState = (cState + 1) % 3;
-        confirmBtn.textContent = cState === 0 ? '❔' : cState === 1 ? '🔊' : '🔇';
-      });
-
-      var testBtn = document.createElement('button'); testBtn.textContent = '▶ Test';
-      testBtn.addEventListener('click', function () {
-        var rec = lastRecording;
-        testBtn.disabled = true; statusEl.textContent = '⏳'; detailEl.textContent = ''; confirmBtn.style.display = 'none';
-        log('Quick test: "' + pm.name + '" on "' + rec.methodName + '"');
-        pm.run(rec.blob).then(function (result) {
-          statusEl.textContent = statusGlyph[result.status] || result.status;
-          detailEl.textContent = result.detail || ''; detailEl.title = result.detail || '';
-          confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
-          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
-        }).finally(function () { testBtn.disabled = false; });
-      });
-
-      row.appendChild(nameEl); row.appendChild(detailEl); row.appendChild(statusEl);
-      row.appendChild(confirmBtn); row.appendChild(testBtn);
-      quickListEl.appendChild(row);
+    var byCategory = {};
+    var order = [];
+    filtered.forEach(function (t) {
+      var cat = t.category || 'Other';
+      if (!byCategory[cat]) { byCategory[cat] = []; order.push(cat); }
+      byCategory[cat].push(t);
     });
-  }
 
-  // ───────────────────────── Recordings list UI ─────────────────────────
-  var recordingsListEl = document.getElementById('recordings-list');
-  var matrixTableEl = document.getElementById('matrix-table');
-  var recCounter = 0;
+    order.forEach(function (cat) {
+      var group = document.createElement('div'); group.className = 'group';
+      var title = document.createElement('div'); title.className = 'group-title'; title.textContent = cat;
+      group.appendChild(title);
 
-  function addRecording(method, blob) {
-    recCounter++;
-    var rec = {
-      id: 'rec' + recCounter, methodId: method.id, methodName: method.name, blob: blob,
-      url: URL.createObjectURL(blob), mimeType: blob.type || 'unknown',
-      sizeKb: (blob.size / 1024).toFixed(1), ts: new Date().toLocaleTimeString(), matrixCells: {}
-    };
-    recordings.push(rec);
-    lastRecording = rec;
-    renderRecordingsList();
-    addMatrixRow(rec);
-    renderQuickTest();
-  }
+      var list = document.createElement('div'); list.className = 'test-list';
+      byCategory[cat].forEach(function (t) {
+        var card = document.createElement('a'); card.className = 'test-card';
+        var clickable = t.status !== 'planned';
+        card.href = clickable ? t.file : '#';
+        if (!clickable) {
+          card.addEventListener('click', function (e) { e.preventDefault(); });
+          card.style.opacity = '0.65'; card.style.cursor = 'default';
+        }
 
-  function sanitizeFilename(s) { return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase(); }
-  function extFromMime(mime) {
-    if (!mime) return 'bin';
-    if (mime.indexOf('webm') !== -1) return 'webm';
-    if (mime.indexOf('mp4') !== -1) return 'm4a';
-    if (mime.indexOf('ogg') !== -1) return 'ogg';
-    if (mime.indexOf('wav') !== -1) return 'wav';
-    return 'audio';
-  }
+        var topRow = document.createElement('div'); topRow.className = 'top-row';
+        var iconEl = document.createElement('span'); iconEl.className = 'icon'; iconEl.textContent = t.icon || '🧪';
+        var nameEl = document.createElement('span'); nameEl.className = 'name'; nameEl.textContent = t.name;
+        var badgeInfo = statusBadge[t.status] || statusBadge.planned;
+        var badgeEl = document.createElement('span'); badgeEl.className = 'badge ' + badgeInfo[0]; badgeEl.textContent = badgeInfo[1];
+        topRow.appendChild(iconEl); topRow.appendChild(nameEl); topRow.appendChild(badgeEl);
 
-  function renderRecordingsList() {
-    if (recordings.length === 0) {
-      recordingsListEl.innerHTML = '<div class="empty-note">No recordings yet \u2014 use a method above.</div>'; return;
+        var descEl = document.createElement('div'); descEl.className = 'desc'; descEl.textContent = t.desc || '';
+        var fileEl = document.createElement('div'); fileEl.className = 'file'; fileEl.textContent = clickable ? t.file : 'not yet created';
+
+        card.appendChild(topRow); card.appendChild(descEl); card.appendChild(fileEl);
+        list.appendChild(card);
+      });
+
+      // "add a new test" hint card, only on the last group when unfiltered
+      group.appendChild(list);
+      groupsEl.appendChild(group);
+    });
+
+    if (!q) {
+      var hint = document.createElement('div'); hint.className = 'panel';
+      hint.innerHTML = '';
+      var hintText = document.createElement('div'); hintText.className = 'sub';
+      hintText.style.margin = '0';
+      hintText.textContent = 'To add a new test suite: drop a new .html file next to this index, then add an entry to the TESTS array at the top of index.html\u2019s script (id, name, file, icon, category, status, desc). It will show up here automatically.';
+      hint.appendChild(hintText);
+      groupsEl.appendChild(hint);
     }
-    recordingsListEl.innerHTML = '';
-    // NOTE: The native <audio controls> player is intentionally NOT used here.
-    // On Cloud Phone (and many feature-phone browsers), the inline controls player
-    // renders and even shows a progress bar but produces no sound — the same root
-    // cause as the silent video in IPTV Lite. Instead we use a plain Play button
-    // that goes through the same unlock + Blob URL path that our tests confirmed works.
-    recordings.forEach(function (rec) {
-      var row = document.createElement('div'); row.className = 'rec-row';
-      var title = document.createElement('strong'); title.textContent = rec.methodName;
-      var meta = document.createElement('div'); meta.className = 'meta';
-      meta.textContent = rec.mimeType + ' \u00b7 ' + rec.sizeKb + ' KB \u00b7 captured ' + rec.ts;
-
-      // Working player: plain button + unlock pattern (confirmed working)
-      var playerRow = document.createElement('div');
-      playerRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
-      var playBtn = document.createElement('button');
-      playBtn.textContent = '\u25b6 Play (with unlock)';
-      var playerStatus = document.createElement('span');
-      playerStatus.style.cssText = 'font-size:11px;color:#aaa;';
-      var currentAudio = null;
-      playBtn.addEventListener('click', function () {
-        if (currentAudio) { try { currentAudio.pause(); } catch(e){} currentAudio = null; }
-        var url = URL.createObjectURL(rec.blob);
-        var audio = new Audio(url);
-        currentAudio = audio;
-        // Unlock Cloud Phone audio channel synchronously before .play()
-        unlockCloudPhoneAudioChannel();
-        playerStatus.textContent = 'playing\u2026';
-        audio.addEventListener('play', unlockCloudPhoneAudioChannel, { once: true });
-        audio.addEventListener('playing', function () { playerStatus.textContent = '\u25b6 audible'; });
-        audio.addEventListener('ended', function () { playerStatus.textContent = 'ended'; URL.revokeObjectURL(url); });
-        audio.addEventListener('error', function () { playerStatus.textContent = 'error'; URL.revokeObjectURL(url); });
-        var p = audio.play();
-        if (p && p.catch) p.catch(function(e){ playerStatus.textContent = 'failed: ' + e.message; URL.revokeObjectURL(url); });
-      });
-      playerRow.appendChild(playBtn); playerRow.appendChild(playerStatus);
-
-      var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
-      var dlLink = document.createElement('a'); dlLink.href = rec.url;
-      dlLink.download = sanitizeFilename(rec.methodName) + '.' + extFromMime(rec.mimeType);
-      var dlBtn = document.createElement('button'); dlBtn.textContent = '\u2b07 Download'; dlLink.appendChild(dlBtn);
-      var testAllBtn = document.createElement('button'); testAllBtn.textContent = '\u25b6 Test all playback methods';
-      testAllBtn.addEventListener('click', function () { runAllPlaybackForRecording(rec); });
-      btnRow.appendChild(dlLink); btnRow.appendChild(testAllBtn);
-
-      row.appendChild(title); row.appendChild(meta); row.appendChild(playerRow); row.appendChild(btnRow);
-      recordingsListEl.appendChild(row);
-    });
   }
 
-  document.getElementById('clear-recordings').addEventListener('click', function () {
-    recordings.forEach(function (rec) { URL.revokeObjectURL(rec.url); });
-    recordings = []; lastRecording = null;
-    renderRecordingsList(); renderQuickTest(); matrixTableEl.innerHTML = '';
-    log('Cleared all recordings and matrix', 'info');
-  });
+  searchBox.addEventListener('input', function () { render(searchBox.value); });
 
-  // ───────────────────────── Matrix UI ─────────────────────────
-  function ensureMatrixHeader() {
-    if (matrixTableEl.querySelector('thead')) return;
-    var thead = document.createElement('thead'), tr = document.createElement('tr');
-    var corner = document.createElement('th'); corner.className = 'rowhead'; corner.textContent = 'Recording \\ Playback';
-    tr.appendChild(corner);
-    playbackMethods.forEach(function (pm) {
-      var th = document.createElement('th'); th.textContent = pm.name; tr.appendChild(th);
-    });
-    thead.appendChild(tr); matrixTableEl.appendChild(thead); matrixTableEl.appendChild(document.createElement('tbody'));
-  }
-
-  function addMatrixRow(rec) {
-    ensureMatrixHeader();
-    var tbody = matrixTableEl.querySelector('tbody'), tr = document.createElement('tr');
-    var rowhead = document.createElement('td'); rowhead.className = 'rowhead';
-    rowhead.textContent = rec.methodName + ' (' + rec.ts + ')';
-    tr.appendChild(rowhead);
-    playbackMethods.forEach(function (pm) {
-      var td = document.createElement('td');
-      // Pre-mark methods we already know are broken on this platform
-      var preMarked = pm.knownFail;
-      td.className = preMarked ? 'status-fail' : 'status-untested';
-      var statusSpan = document.createElement('div'); statusSpan.className = 'cell-status';
-      statusSpan.textContent = preMarked ? '❌' : '–';
-      var confirmBtn = document.createElement('button'); confirmBtn.className = 'cell-confirm';
-      confirmBtn.textContent = '❔'; confirmBtn.title = 'Click after listening: Unconfirmed → 🔊 Audible → 🔇 Silent';
-      confirmBtn.style.display = 'none';
-      var cState = 0;
-      confirmBtn.addEventListener('click', function () {
-        cState = (cState + 1) % 3;
-        if (cState === 0) { confirmBtn.textContent = '❔'; td.classList.remove('confirm-audible', 'confirm-silent'); }
-        else if (cState === 1) { confirmBtn.textContent = '🔊'; td.classList.remove('confirm-silent'); td.classList.add('confirm-audible'); }
-        else { confirmBtn.textContent = '🔇'; td.classList.remove('confirm-audible'); td.classList.add('confirm-silent'); }
-      });
-      td.appendChild(statusSpan); td.appendChild(confirmBtn);
-      td.title = preMarked ? 'Known broken on Cloud Phone — click to re-test anyway' : 'Click cell to (re)run this test';
-      td.addEventListener('click', function (e) { if (e.target === confirmBtn) return; runPlaybackTest(rec, pm); });
-      tr.appendChild(td);
-      rec.matrixCells[pm.id] = { td: td, statusSpan: statusSpan, confirmBtn: confirmBtn };
-    });
-    tbody.appendChild(tr);
-  }
-
-  function runPlaybackTest(rec, pm) {
-    var cell = rec.matrixCells[pm.id];
-    cell.statusSpan.textContent = '⏳'; cell.td.className = 'status-untested';
-    log('Testing "' + pm.name + '" on "' + rec.methodName + '"…');
-    return pm.run(rec.blob).then(function (result) {
-      cell.statusSpan.textContent = statusGlyph[result.status] || result.status;
-      cell.td.className = 'status-' + result.status;
-      cell.confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
-      cell.td.title = result.detail || '';
-      log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
-      return result;
-    });
-  }
-
-  function runAllPlaybackForRecording(rec) {
-    var chain = Promise.resolve();
-    playbackMethods.forEach(function (pm) {
-      chain = chain.then(function () { return runPlaybackTest(rec, pm); })
-                   .then(function () { return new Promise(function (r) { setTimeout(r, 300); }); });
-    });
-    return chain;
-  }
-
-  document.getElementById('run-full-matrix').addEventListener('click', function () {
-    if (recordings.length === 0) { log('No recordings to test — record something first', 'warn'); return; }
-    log('Running full matrix: ' + recordings.length + ' × ' + playbackMethods.length, 'info');
-    var chain = Promise.resolve();
-    recordings.forEach(function (rec) { chain = chain.then(function () { return runAllPlaybackForRecording(rec); }); });
-    chain.then(function () { log('Full matrix complete', 'ok'); });
-  });
-
-  document.getElementById('clear-matrix').addEventListener('click', function () {
-    recordings.forEach(function (rec) {
-      Object.keys(rec.matrixCells).forEach(function (pid) {
-        var cell = rec.matrixCells[pid];
-        cell.statusSpan.textContent = '–'; cell.td.className = 'status-untested';
-        cell.confirmBtn.style.display = 'none'; cell.confirmBtn.textContent = '❔';
-        cell.td.classList.remove('confirm-audible', 'confirm-silent');
-      });
-    });
-    log('Matrix statuses reset', 'info');
-  });
-
-  document.getElementById('export-json').addEventListener('click', function () {
-    var data = recordings.map(function (rec) {
-      var results = {};
-      Object.keys(rec.matrixCells).forEach(function (pid) {
-        results[pid] = { status: rec.matrixCells[pid].td.className.replace('status-', ''), confirm: rec.matrixCells[pid].confirmBtn.textContent };
-      });
-      return { method: rec.methodName, mimeType: rec.mimeType, sizeKb: rec.sizeKb, capturedAt: rec.ts, playbackResults: results };
-    });
-    var json = JSON.stringify({ url: location.href, userAgent: navigator.userAgent, exportedAt: new Date().toISOString(), recordings: data }, null, 2);
-    var blob = new Blob([json], { type: 'application/json' }), url = URL.createObjectURL(blob);
-    var a = document.createElement('a'); a.href = url; a.download = 'audio-test-results.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-    log('Exported results JSON', 'ok');
-  });
-
-  log('Audio API Test Suite loaded. Protocol: ' + location.protocol + (window.isSecureContext ? ' (secure context ✅)' : ' (NOT secure ⚠️ — getUserMedia will fail)'), 'info');
+  render('');
 })();
 </script>
 </body>
