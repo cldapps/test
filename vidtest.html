@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Video API Test Suite — AgentMae</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: #1e1e1e; color: #eee;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-size: 13px;
+  }
+  body { padding: 10px; }
+  h1 { font-size: 16px; margin: 0 0 4px 0; }
+  h2 { font-size: 13px; margin: 18px 0 6px 0; color: #8ab4f8; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .sub { color: #999; font-size: 11px; margin-bottom: 10px; }
+  .panel { background: #262626; border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+  .env-grid { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 12px; }
+  .env-grid .k { color: #bbb; }
+  .ok { color: #4caf50; font-weight: bold; }
+  .bad { color: #f44336; font-weight: bold; }
+  .warn { color: #ffb300; font-weight: bold; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+  .card {
+    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .card .cat { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .03em; }
+  .card .name { font-size: 12.5px; font-weight: 600; }
+  .card .status { font-size: 11px; min-height: 14px; color: #aaa; }
+  button {
+    background: #3b3b3b; color: #fff; border: 1px solid #4a4a4a; border-radius: 6px;
+    padding: 6px 8px; font-size: 12px; cursor: pointer;
+  }
+  button:hover { background: #474747; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; }
+  button.primary:hover { background: #2f6fd6; }
+  button.danger { background: #5a2a2a; border-color: #7a3a3a; }
+  .rec-row {
+    background: #2c2c2c; border: 1px solid #3a3a3a; border-radius: 8px; padding: 8px;
+    margin-bottom: 8px; font-size: 12px;
+  }
+  .rec-row .meta { color: #999; font-size: 11px; margin: 2px 0 6px 0; }
+  .rec-row .btn-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .thumb-video { background: #000; border-radius: 4px; display: block; }
+  table.matrix { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 11px; }
+  table.matrix th, table.matrix td {
+    border: 1px solid #3a3a3a; padding: 4px 6px; text-align: center; white-space: nowrap;
+  }
+  table.matrix th { background: #2c2c2c; position: sticky; top: 0; }
+  table.matrix th.rowhead, table.matrix td.rowhead {
+    text-align: left; position: sticky; left: 0; background: #262626; max-width: 220px;
+    white-space: normal; font-weight: 600;
+  }
+  .matrix-wrap { overflow: auto; max-height: 400px; border: 1px solid #3a3a3a; border-radius: 6px; }
+  .cell-status { font-size: 14px; }
+  .cell-confirm { font-size: 11px; margin-top: 2px; padding: 1px 4px; }
+  .status-pass { background: #1b3a1f; }
+  .status-fail { background: #3a1b1b; }
+  .status-unsupported { background: #2a2a3a; }
+  .status-timeout { background: #3a341b; }
+  .status-untested { background: transparent; }
+  .confirm-visible { outline: 2px solid #4caf50; }
+  .confirm-blank { outline: 2px solid #f44336; }
+  #log {
+    background: #111; border: 1px solid #3a3a3a; border-radius: 6px; padding: 6px;
+    height: 160px; overflow-y: auto; font-family: monospace; font-size: 11px; white-space: pre-wrap;
+  }
+  .log-err { color: #f88; }
+  .log-ok { color: #8f8; }
+  .log-info { color: #9cf; }
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .empty-note { color: #888; font-size: 12px; padding: 8px; }
+  .qt-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px;
+    border-bottom: 1px solid #333; flex-wrap: wrap;
+  }
+  .qt-row:last-child { border-bottom: none; }
+  .qt-name { flex: 1 1 160px; font-size: 12.5px; min-width: 140px; }
+  .qt-status { min-width: 26px; font-size: 15px; text-align: center; }
+  .qt-detail { font-size: 10.5px; color: #999; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qt-preview { width: 84px; height: 54px; background: #000; border-radius: 4px; flex: 0 0 auto; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid #333; }
+  .tabs a {
+    display: inline-block; padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+    color: #999; text-decoration: none; border: 1px solid transparent; border-bottom: none;
+    border-radius: 8px 8px 0 0; margin-bottom: -1px;
+  }
+  .tabs a:hover { color: #ddd; background: #262626; }
+  .tabs a.active { color: #8ab4f8; background: #262626; border-color: #3a3a3a; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <a href="index.html">📱 All Tests</a>
+  <a href="audtest.html">🎙 Audio Test Suite</a>
+  <a href="vidtest.html" class="active">🎬 Video Test Suite</a>
+</div>
+
+<h1>🎬 Video API Test Suite</h1>
+<div class="sub">Tests every recording API × every playback API on this device/browser, so you can see exactly which combinations actually work on Cloud Phone (or wherever this is loaded). Includes a built-in synthetic sample-video generator, so you don't need a camera to run most tests.</div>
+
+<h2>Environment</h2>
+<div class="panel">
+  <div class="env-grid" id="env-grid"></div>
+</div>
+
+<h2>Recording Methods</h2>
+<div class="panel">
+  <div class="sub">The "Canvas captureStream" card generates a tiny synthetic sample video (animated shape + tone) entirely in-browser — no camera permission needed. Use it as your default test sample; use the camera-based cards to additionally check real capture.</div>
+  <div class="cards" id="rec-cards"></div>
+</div>
+
+<h2>Recordings <span style="color:#888;font-weight:normal;">(captured samples, ready to test playback on)</span></h2>
+<div class="panel">
+  <div class="toolbar">
+    <button id="clear-recordings" class="danger">Clear all recordings</button>
+  </div>
+  <div id="recordings-list"><div class="empty-note">No recordings yet — use a method above.</div></div>
+</div>
+
+<h2>Quick Player Test <span style="color:#888;font-weight:normal;">(tests the last recording on each player, one click at a time — watch the thumbnail)</span></h2>
+<div class="panel">
+  <div class="sub" id="quick-test-target">No recording yet — record something above first.</div>
+  <div id="quick-test-list"></div>
+</div>
+
+<h2>Compatibility Matrix</h2>
+<div class="panel">
+  <div class="toolbar">
+    <button id="run-full-matrix" class="primary">▶ Run full matrix</button>
+    <button id="clear-matrix">Reset matrix statuses</button>
+  </div>
+  <div class="sub">
+    ✅/❌ = the API call itself succeeded/failed without error. Some platforms accept a play() call but render a blank/black frame (picture) or drop the audio track —
+    after a row plays, click the small ❔ button under a cell and look/listen, then mark 👁 Visible or ⬛ Blank for the real verdict.
+  </div>
+  <div class="matrix-wrap"><table class="matrix" id="matrix-table"></table></div>
+</div>
+
+<h2>Activity Log</h2>
+<div class="panel">
+  <div class="toolbar">
+    <button id="copy-log">Copy log</button>
+    <button id="export-json">Export results JSON</button>
+    <button id="clear-log">Clear log</button>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ───────────────────────── Status glyphs ─────────────────────────
+  var statusGlyph = { pass: '✅', fail: '❌', unsupported: '🚫', timeout: '⏱', untested: '–' };
+
+  // ───────────────────────── Logging ─────────────────────────
+  var logEl = document.getElementById('log');
+  function log(msg, level) {
+    var line = document.createElement('div');
+    line.className = level ? ('log-' + level) : '';
+    var t = new Date().toLocaleTimeString();
+    line.textContent = '[' + t + '] ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  document.getElementById('copy-log').addEventListener('click', function () {
+    var text = Array.prototype.map.call(logEl.children, function (el) { return el.textContent; }).join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { log('Log copied to clipboard', 'ok'); });
+    } else {
+      log('Clipboard API not available — select and copy manually', 'warn');
+    }
+  });
+  document.getElementById('clear-log').addEventListener('click', function () { logEl.innerHTML = ''; });
+
+  // ───────────────────────── Environment panel ─────────────────────────
+  var envGrid = document.getElementById('env-grid');
+  function envRow(label, ok, detail) {
+    var k = document.createElement('div'); k.className = 'k'; k.textContent = label;
+    var v = document.createElement('div');
+    v.className = ok === true ? 'ok' : (ok === false ? 'bad' : 'warn');
+    v.textContent = (detail !== undefined ? detail : (ok ? 'yes' : 'no'));
+    envGrid.appendChild(k); envGrid.appendChild(v);
+  }
+
+  function renderEnv() {
+    envGrid.innerHTML = '';
+    envRow('URL', true, location.href);
+    envRow('Protocol', location.protocol === 'https:' || location.hostname === 'localhost', location.protocol);
+    envRow('Secure context (window.isSecureContext)', !!window.isSecureContext);
+    envRow('navigator.mediaDevices', !!(navigator.mediaDevices));
+    envRow('navigator.mediaDevices.getUserMedia', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+    envRow('MediaRecorder API', typeof MediaRecorder !== 'undefined');
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
+      ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm;codecs=h264', 'video/mp4;codecs=avc1', 'video/ogg;codecs=theora'].forEach(function (m) {
+        envRow('  isTypeSupported(' + m + ')', MediaRecorder.isTypeSupported(m));
+      });
+    }
+    envRow('HTMLCanvasElement.captureStream', !!(document.createElement('canvas').captureStream));
+    envRow('AudioContext (Web Audio API)', !!(window.AudioContext || window.webkitAudioContext));
+    envRow('MediaSource Extensions', typeof MediaSource !== 'undefined');
+    if (typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported) {
+      ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/mp4;codecs="avc1.42E01E"'].forEach(function (m) {
+        envRow('  MediaSource.isTypeSupported(' + m + ')', MediaSource.isTypeSupported(m));
+      });
+    }
+    envRow('Picture-in-Picture (document.pictureInPictureEnabled)', !!document.pictureInPictureEnabled);
+    envRow('HTMLVideoElement.requestPictureInPicture', !!(HTMLVideoElement.prototype.requestPictureInPicture));
+    envRow('navigator.volumeManager (Cloud Phone)', !!navigator.volumeManager);
+    envRow('navigator.hasFeature (Cloud Phone)', typeof navigator.hasFeature === 'function');
+    if (typeof navigator.hasFeature === 'function') {
+      ['VideoCapture', 'VideoPlayback', 'VideoSeek', 'VideoUpload'].forEach(function (feature) {
+        var k = document.createElement('div'); k.className = 'k'; k.textContent = '  hasFeature("' + feature + '")';
+        var v = document.createElement('div'); v.className = 'warn'; v.textContent = 'checking…';
+        envGrid.appendChild(k); envGrid.appendChild(v);
+        navigator.hasFeature(feature).then(function (s) { v.className = s ? 'ok' : 'bad'; v.textContent = s ? 'yes' : 'no'; })
+          .catch(function (e) { v.className = 'bad'; v.textContent = 'error: ' + e.message; });
+      });
+    }
+  }
+  renderEnv();
+
+  // ───────────────────────── Shared helpers ─────────────────────────
+  function blobArrayBuffer(blob) {
+    if (typeof blob.arrayBuffer === 'function') return blob.arrayBuffer();
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader(); r.onload = function () { resolve(r.result); }; r.onerror = reject; r.readAsArrayBuffer(blob);
+    });
+  }
+  function blobToDataURL(blob) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader(); r.onloadend = function () { resolve(r.result); }; r.onerror = reject; r.readAsDataURL(blob);
+    });
+  }
+
+  // Generic media-element outcome race (works for <video>, <audio>)
+  function raceOutcome(mediaEl, timeoutMs) {
+    timeoutMs = timeoutMs || 6000;
+    return new Promise(function (resolve) {
+      var settled = false;
+      function cleanup() { clearTimeout(timer); mediaEl.removeEventListener('playing', onPlaying); mediaEl.removeEventListener('error', onError); }
+      function onPlaying() { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'playing event fired' }); }
+      function onError() {
+        if (settled) return; settled = true; cleanup();
+        var err = mediaEl.error;
+        resolve({ status: 'fail', detail: err ? ('MediaError code ' + err.code) : 'error event fired' });
+      }
+      var timer = setTimeout(function () {
+        if (settled) return; settled = true; cleanup();
+        resolve({ status: 'timeout', detail: 'no playing/error event within ' + timeoutMs + 'ms' });
+      }, timeoutMs);
+      mediaEl.addEventListener('playing', onPlaying);
+      mediaEl.addEventListener('error', onError);
+      var p;
+      try { p = mediaEl.play(); } catch (err) {
+        if (settled) return; settled = true; cleanup();
+        resolve({ status: 'fail', detail: (err && err.message) ? err.message : String(err) }); return;
+      }
+      if (p && typeof p.catch === 'function') {
+        p.catch(function (err) {
+          if (settled) return; settled = true; cleanup();
+          resolve({ status: 'fail', detail: (err && err.name) ? (err.name + ': ' + err.message) : String(err) });
+        });
+      }
+    });
+  }
+
+  // Same as raceOutcome, but for elements with autoplay set (no explicit .play() call)
+  function raceAutoplayOutcome(mediaEl, timeoutMs) {
+    timeoutMs = timeoutMs || 6000;
+    return new Promise(function (resolve) {
+      var settled = false;
+      function cleanup() { clearTimeout(timer); mediaEl.removeEventListener('playing', onPlaying); mediaEl.removeEventListener('error', onError); }
+      function onPlaying() { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'autoplay: playing event fired' }); }
+      function onError() {
+        if (settled) return; settled = true; cleanup();
+        var err = mediaEl.error;
+        resolve({ status: 'fail', detail: err ? ('MediaError code ' + err.code) : 'error event fired' });
+      }
+      var timer = setTimeout(function () {
+        if (settled) return; settled = true; cleanup();
+        resolve({ status: 'timeout', detail: 'autoplay never fired playing within ' + timeoutMs + 'ms (likely blocked)' });
+      }, timeoutMs);
+      mediaEl.addEventListener('playing', onPlaying);
+      mediaEl.addEventListener('error', onError);
+    });
+  }
+
+  // ───────────────────────── Recording implementations ─────────────────────────
+  function recordViaMediaRecorderVideo(mimeType, durationMs) {
+    durationMs = durationMs || 3000;
+    return new Promise(function (resolve, reject) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { reject(new Error('getUserMedia not available (insecure context or unsupported browser)')); return; }
+      if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
+      if (mimeType && MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(mimeType)) { reject(new Error('MediaRecorder.isTypeSupported() is false for: ' + mimeType)); return; }
+      navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true }).then(function (stream) {
+        var recorder;
+        try { recorder = mimeType ? new MediaRecorder(stream, { mimeType: mimeType }) : new MediaRecorder(stream); }
+        catch (err) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(err); return; }
+        var chunks = [];
+        recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.onerror = function (e) { stream.getTracks().forEach(function (t) { t.stop(); }); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
+        recorder.onstop = function () {
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          resolve(new Blob(chunks, { type: recorder.mimeType || mimeType || 'video/webm' }));
+        };
+        recorder.start();
+        setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
+      }).catch(reject);
+    });
+  }
+
+  // Synthetic tiny sample video — no camera required. Animates a canvas and
+  // records it (plus a quiet tone track) via canvas.captureStream() + MediaRecorder.
+  function recordViaCanvasCapture(durationMs) {
+    durationMs = durationMs || 3000;
+    return new Promise(function (resolve, reject) {
+      if (typeof MediaRecorder === 'undefined') { reject(new Error('MediaRecorder API not available')); return; }
+      var canvas = document.createElement('canvas'); canvas.width = 240; canvas.height = 160;
+      var ctx2d = canvas.getContext('2d');
+      if (!canvas.captureStream) { reject(new Error('HTMLCanvasElement.captureStream not available on this platform')); return; }
+      var stream;
+      try { stream = canvas.captureStream(25); } catch (e) { reject(e); return; }
+
+      var audioCtx = null, oscillator = null;
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          audioCtx = new AC();
+          oscillator = audioCtx.createOscillator();
+          var gain = audioCtx.createGain(); gain.gain.value = 0.05;
+          var dest = audioCtx.createMediaStreamDestination();
+          oscillator.type = 'sine'; oscillator.frequency.value = 440;
+          oscillator.connect(gain); gain.connect(dest);
+          oscillator.start();
+          dest.stream.getAudioTracks().forEach(function (t) { stream.addTrack(t); });
+        }
+      } catch (_) { /* tone track is optional */ }
+
+      var chosenMime = 'video/webm;codecs=vp8,opus';
+      var recorder;
+      try {
+        if (MediaRecorder.isTypeSupported && !MediaRecorder.isTypeSupported(chosenMime)) chosenMime = 'video/webm';
+        recorder = new MediaRecorder(stream, { mimeType: chosenMime });
+      } catch (e) {
+        try { recorder = new MediaRecorder(stream); chosenMime = ''; } catch (e2) { reject(e2); return; }
+      }
+
+      var chunks = [], frame = 0, raf;
+      function draw() {
+        frame++;
+        ctx2d.fillStyle = '#111'; ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+        var hue = (frame * 4) % 360;
+        ctx2d.fillStyle = 'hsl(' + hue + ',75%,55%)';
+        var x = (canvas.width / 2) + Math.sin(frame / 10) * 70;
+        var y = (canvas.height / 2) + Math.cos(frame / 10) * 40;
+        ctx2d.beginPath(); ctx2d.arc(x, y, 20, 0, Math.PI * 2); ctx2d.fill();
+        ctx2d.fillStyle = '#fff'; ctx2d.font = '12px monospace';
+        ctx2d.fillText('sample frame ' + frame, 8, 18);
+        raf = requestAnimationFrame(draw);
+      }
+      draw();
+
+      function teardown() {
+        cancelAnimationFrame(raf);
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        if (oscillator) { try { oscillator.stop(); } catch (_) {} }
+        if (audioCtx) { try { audioCtx.close(); } catch (_) {} }
+      }
+      recorder.ondataavailable = function (e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      recorder.onerror = function (e) { teardown(); reject(new Error('MediaRecorder error: ' + (e.error ? e.error.message : 'unknown'))); };
+      recorder.onstop = function () { teardown(); resolve(new Blob(chunks, { type: recorder.mimeType || chosenMime || 'video/webm' })); };
+      recorder.start();
+      setTimeout(function () { if (recorder.state !== 'inactive') recorder.stop(); }, durationMs);
+    });
+  }
+
+  function recordViaFileInputVideo(useCapture) {
+    return new Promise(function (resolve, reject) {
+      var input = document.createElement('input');
+      input.type = 'file'; input.accept = 'video/*';
+      if (useCapture) input.setAttribute('capture', 'camera');
+      input.style.display = 'none'; document.body.appendChild(input);
+      var settled = false;
+      input.addEventListener('change', function () {
+        if (settled) return; settled = true;
+        var file = input.files && input.files[0]; document.body.removeChild(input);
+        if (!file) { reject(new Error('No file selected (cancelled)')); return; }
+        resolve(file);
+      }, { once: true });
+      input.addEventListener('cancel', function () {
+        if (settled) return; settled = true; document.body.removeChild(input); reject(new Error('File dialog cancelled'));
+      }, { once: true });
+      input.click();
+    });
+  }
+
+  // ── Recording methods: primaries + a synthetic generator + "known unsupported" probes ──
+  var recordingMethods = [
+    { id: 'canvas-capture', name: 'Canvas captureStream() — synthetic sample',    cat: 'No camera needed',                run: function () { return recordViaCanvasCapture(); } },
+    { id: 'mr-webm-vp8',    name: 'MediaRecorder — WebM/VP8 (camera)',            cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorderVideo('video/webm;codecs=vp8'); } },
+    { id: 'mr-webm-vp9',    name: 'MediaRecorder — WebM/VP9 (camera)',            cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorderVideo('video/webm;codecs=vp9'); } },
+    { id: 'mr-default',     name: 'MediaRecorder — Browser Default (camera)',     cat: 'getUserMedia + MediaRecorder',    run: function () { return recordViaMediaRecorderVideo(null); } },
+    { id: 'native-capture', name: 'Native Camera Recorder (capture=camera)',      cat: 'File Input (like camera flow)',   run: function () { return recordViaFileInputVideo(true); } },
+    { id: 'file-upload',    name: 'Video File Upload (no capture)',               cat: 'File Input (like camera flow)',   run: function () { return recordViaFileInputVideo(false); } },
+    { id: 'mr-mp4-h264',    name: 'MediaRecorder — MP4/H264 ⚠️ often unsupported', cat: 'getUserMedia + MediaRecorder',   run: function () { return recordViaMediaRecorderVideo('video/mp4;codecs=avc1'); } },
+    { id: 'mr-ogg-theora',  name: 'MediaRecorder — Ogg/Theora ⚠️ known unsupported', cat: 'getUserMedia + MediaRecorder', run: function () { return recordViaMediaRecorderVideo('video/ogg;codecs=theora'); } }
+  ];
+
+  // ───────────────────────── Playback implementations ─────────────────────────
+  // Every function optionally accepts a `previewContainer` DOM node — if given, a small
+  // visible <video> thumbnail is mounted there so you can actually SEE whether picture renders.
+  function makePreviewVideo(previewContainer) {
+    var video = document.createElement('video');
+    video.className = 'thumb-video';
+    video.muted = false; video.playsInline = true; video.setAttribute('playsinline', '');
+    if (previewContainer) {
+      video.width = 84; video.height = 54;
+      previewContainer.innerHTML = ''; previewContainer.appendChild(video);
+    } else {
+      video.style.display = 'none'; document.body.appendChild(video);
+    }
+    return video;
+  }
+  function removePreviewVideo(video, previewContainer) {
+    try { video.pause(); } catch (_) {}
+    try { video.removeAttribute('src'); video.load(); } catch (_) {}
+    if (!previewContainer) { try { document.body.removeChild(video); } catch (_) {} }
+  }
+
+  function playVideoElementBlobUrl(blob, previewContainer) {
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer);
+    video.src = url;
+    return raceOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+  function playVideoElementBlobUrlUnlocked(blob, previewContainer) {
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer);
+    video.src = url;
+    unlockCloudPhoneMediaChannel();
+    return raceOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+  function playVideoElementUnlockOnPlay(blob, previewContainer) {
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer);
+    video.src = url;
+    video.addEventListener('play', unlockCloudPhoneMediaChannel, { once: true });
+    return raceOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+  function playVideoElementDataUri(blob, previewContainer) {
+    return blobToDataURL(blob).then(function (dataUrl) {
+      var video = makePreviewVideo(previewContainer);
+      video.src = dataUrl;
+      return raceOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); });
+    });
+  }
+  function playVideoSourceElement(blob, previewContainer) {
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer), source = document.createElement('source');
+    source.src = url; source.type = blob.type || 'video/webm';
+    video.appendChild(source); video.load();
+    return raceOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+  function playVideoMutedAutoplay(blob, previewContainer) {
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer);
+    video.muted = true; video.autoplay = true; video.playsInline = true;
+    video.src = url;
+    return raceAutoplayOutcome(video).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+  function playVideoCanvasFrame(blob, previewContainer) {
+    // Plays the video off-screen, then draws a frame to canvas and samples pixels
+    // to detect the "plays but renders a black/blank frame" failure mode (the video
+    // analog of the silent-but-playing audio bug).
+    var url = URL.createObjectURL(blob), video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.style.display = 'none';
+    document.body.appendChild(video); video.src = url;
+    return raceOutcome(video, 6000).then(function (outcome) {
+      if (outcome.status !== 'pass') return outcome;
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          try {
+            var w = video.videoWidth || 160, h = video.videoHeight || 90;
+            var canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+            var ctx2d = canvas.getContext('2d');
+            ctx2d.drawImage(video, 0, 0, w, h);
+            var data = ctx2d.getImageData(0, 0, w, h).data;
+            var sum = 0, n = 0;
+            for (var i = 0; i < data.length; i += 40) { sum += data[i] + data[i + 1] + data[i + 2]; n++; }
+            var avg = sum / (n * 3);
+            if (previewContainer) {
+              canvas.className = 'thumb-video'; canvas.style.width = '84px'; canvas.style.height = '54px';
+              previewContainer.innerHTML = ''; previewContainer.appendChild(canvas);
+            }
+            if (avg < 2) resolve({ status: 'fail', detail: 'frame sampled fully black (avg=' + avg.toFixed(1) + ') — picture not rendering' });
+            else resolve({ status: 'pass', detail: 'frame has visible content (avg brightness=' + avg.toFixed(1) + ')' });
+          } catch (e) {
+            resolve({ status: 'fail', detail: 'drawImage/getImageData failed: ' + ((e && e.message) ? e.message : String(e)) });
+          }
+        }, 400);
+      });
+    }).finally(function () { try { video.pause(); } catch (_) {} try { document.body.removeChild(video); } catch (_) {} URL.revokeObjectURL(url); });
+  }
+  function playVideoBlobAsAudioElement(blob, previewContainer) {
+    // Assigns the video blob to an <audio> element — tests whether the audio track
+    // still plays even when the container is handed to an audio-only player.
+    var url = URL.createObjectURL(blob), audio = document.createElement('audio');
+    audio.style.display = 'none'; document.body.appendChild(audio); audio.src = url;
+    if (previewContainer) previewContainer.textContent = '(no picture — audio element)';
+    return raceOutcome(audio).finally(function () { audio.pause(); document.body.removeChild(audio); URL.revokeObjectURL(url); });
+  }
+  function playViaMediaSourceVideo(blob, previewContainer) {
+    if (typeof MediaSource === 'undefined') return Promise.resolve({ status: 'unsupported', detail: 'MediaSource is not defined' });
+    return new Promise(function (resolve) {
+      var settled = false, mediaSource, video, url, timer;
+      function finish(result) {
+        if (settled) return; settled = true; clearTimeout(timer);
+        try { video.pause(); } catch (_) {} try { document.body.removeChild(video); } catch (_) {} try { URL.revokeObjectURL(url); } catch (_) {}
+        resolve(result);
+      }
+      try {
+        mediaSource = new MediaSource();
+        video = document.createElement('video'); video.style.display = 'none'; video.muted = true;
+        document.body.appendChild(video); url = URL.createObjectURL(mediaSource); video.src = url;
+        timer = setTimeout(function () { finish({ status: 'timeout', detail: 'sourceopen/playing not reached within 6s' }); }, 6000);
+        mediaSource.addEventListener('sourceopen', function () {
+          try {
+            var mime = blob.type || 'video/webm;codecs=vp8';
+            if (!MediaSource.isTypeSupported(mime)) { finish({ status: 'unsupported', detail: 'MediaSource.isTypeSupported() false for ' + mime }); return; }
+            var sb = mediaSource.addSourceBuffer(mime);
+            blobArrayBuffer(blob).then(function (ab) {
+              sb.addEventListener('updateend', function () { try { mediaSource.endOfStream(); } catch (_) {} }, { once: true });
+              sb.appendBuffer(ab); raceOutcome(video).then(finish);
+            }).catch(function (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); });
+          } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
+        }, { once: true });
+      } catch (e) { finish({ status: 'fail', detail: (e && e.message) ? e.message : String(e) }); }
+    });
+  }
+  function playViaIframeVideo(blob) {
+    var url = URL.createObjectURL(blob);
+    return new Promise(function (resolve) {
+      var settled = false, iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      var timer = setTimeout(function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'timeout', detail: 'iframe did not fire load/error within 6s' }); }, 6000);
+      function cleanup() { clearTimeout(timer); document.body.removeChild(iframe); URL.revokeObjectURL(url); }
+      iframe.onload = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'iframe loaded native player — confirm visually' }); };
+      iframe.onerror = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'fail', detail: 'iframe error event' }); };
+      iframe.src = url; document.body.appendChild(iframe);
+    });
+  }
+  function playViaObjectEmbed(blob) {
+    var url = URL.createObjectURL(blob);
+    return new Promise(function (resolve) {
+      var settled = false, obj = document.createElement('object');
+      obj.style.display = 'none'; obj.type = blob.type || 'video/webm'; obj.data = url;
+      var timer = setTimeout(function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'timeout', detail: 'object did not fire load/error within 6s' }); }, 6000);
+      function cleanup() { clearTimeout(timer); document.body.removeChild(obj); URL.revokeObjectURL(url); }
+      obj.onload = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'pass', detail: 'object loaded — confirm visually' }); };
+      obj.onerror = function () { if (settled) return; settled = true; cleanup(); resolve({ status: 'fail', detail: 'object error event' }); };
+      document.body.appendChild(obj);
+    });
+  }
+  function playViaPictureInPicture(blob, previewContainer) {
+    if (!(document.pictureInPictureEnabled)) return Promise.resolve({ status: 'unsupported', detail: 'document.pictureInPictureEnabled is false' });
+    var url = URL.createObjectURL(blob), video = makePreviewVideo(previewContainer);
+    video.muted = true; video.src = url;
+    return raceOutcome(video).then(function (outcome) {
+      if (outcome.status !== 'pass') return outcome;
+      if (!video.requestPictureInPicture) return { status: 'unsupported', detail: 'requestPictureInPicture not present on element' };
+      return video.requestPictureInPicture().then(function () {
+        return { status: 'pass', detail: 'entered Picture-in-Picture' };
+      }).catch(function (e) {
+        return { status: 'fail', detail: (e && e.message) ? e.message : String(e) };
+      });
+    }).finally(function () { removePreviewVideo(video, previewContainer); URL.revokeObjectURL(url); });
+  }
+
+  // Cloud Phone media channel unlock (mirrors the audio suite's unlock pattern)
+  function unlockCloudPhoneMediaChannel() {
+    if (!window._testSuiteAudioCtx) {
+      try { window._testSuiteAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+    }
+    if (window._testSuiteAudioCtx && window._testSuiteAudioCtx.state === 'suspended') {
+      try { window._testSuiteAudioCtx.resume(); } catch (_) {}
+    }
+    if (navigator.volumeManager && navigator.volumeManager.requestUp) { try { navigator.volumeManager.requestUp(); } catch (_) {} }
+  }
+
+  function wrapPlayback(fn) {
+    return function (blob, previewContainer) {
+      return Promise.resolve().then(function () { return fn(blob, previewContainer); })
+        .catch(function (err) { return { status: 'fail', detail: (err && err.message) ? err.message : String(err) }; });
+    };
+  }
+
+  // ── Playback methods: plain-text names (no HTML tags — they go into textContent) ──
+  // knownFail: true  = commonly broken on constrained platforms (pre-marked ❌ in matrix)
+  // knownFail: false = commonly works
+  var playbackMethods = [
+    { id: 'video-bloburl',        name: 'video element + Blob URL',                            knownFail: false, run: wrapPlayback(playVideoElementBlobUrl) },
+    { id: 'video-bloburl-unlock', name: 'video element + Blob URL + Unlock (pre-play)',         knownFail: false, run: wrapPlayback(playVideoElementBlobUrlUnlocked) },
+    { id: 'video-unlock-onplay',  name: 'video element + Unlock on "play" event',               knownFail: false, run: wrapPlayback(playVideoElementUnlockOnPlay) },
+    { id: 'video-datauri',        name: 'video element + Data URI ⚠️ often broken',             knownFail: true,  run: wrapPlayback(playVideoElementDataUri) },
+    { id: 'video-source',         name: 'video + child source element',                        knownFail: false, run: wrapPlayback(playVideoSourceElement) },
+    { id: 'video-muted-autoplay', name: 'video muted + autoplay + playsinline',                 knownFail: false, run: wrapPlayback(playVideoMutedAutoplay) },
+    { id: 'video-canvas-frame',   name: 'drawImage → canvas frame sample (blank-frame check)',  knownFail: false, run: wrapPlayback(playVideoCanvasFrame) },
+    { id: 'audio-el-video-blob',  name: 'audio element playing a video blob (audio track only)',knownFail: false, run: wrapPlayback(playVideoBlobAsAudioElement) },
+    { id: 'media-source',         name: 'MediaSource Extensions ⚠️ often broken',               knownFail: true,  run: wrapPlayback(playViaMediaSourceVideo) },
+    { id: 'iframe-embed',         name: 'iframe native player ⚠️ often broken',                 knownFail: true,  run: wrapPlayback(playViaIframeVideo) },
+    { id: 'object-embed',         name: 'object/embed tag ⚠️ often broken',                     knownFail: true,  run: wrapPlayback(playViaObjectEmbed) },
+    { id: 'picture-in-picture',   name: 'Picture-in-Picture request',                           knownFail: true,  run: wrapPlayback(playViaPictureInPicture) }
+  ];
+
+  // ───────────────────────── Recording cards UI ─────────────────────────
+  var recCardsEl = document.getElementById('rec-cards');
+  var recordings = [];
+  var lastRecording = null;
+
+  recordingMethods.forEach(function (method) {
+    var card = document.createElement('div'); card.className = 'card';
+    var catEl = document.createElement('div'); catEl.className = 'cat'; catEl.textContent = method.cat;
+    var nameEl = document.createElement('div'); nameEl.className = 'name'; nameEl.textContent = method.name;
+    var statusEl = document.createElement('div'); statusEl.className = 'status'; statusEl.textContent = 'idle';
+    var btn = document.createElement('button'); btn.textContent = 'Record';
+    card.appendChild(catEl); card.appendChild(nameEl); card.appendChild(statusEl); card.appendChild(btn);
+    recCardsEl.appendChild(card);
+
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      var isFile = (method.id === 'native-capture' || method.id === 'file-upload');
+      statusEl.textContent = isFile ? 'waiting for file dialog…' : (method.id === 'canvas-capture' ? 'generating sample (3s)…' : 'recording (3s)…');
+      statusEl.className = 'status warn';
+      log('Starting: ' + method.name);
+      method.run().then(function (blob) {
+        statusEl.className = 'status ok';
+        statusEl.textContent = 'OK — ' + (blob.type || 'unknown') + ', ' + (blob.size / 1024).toFixed(1) + ' KB';
+        log('OK via "' + method.name + '" type=' + blob.type + ' size=' + blob.size + 'B', 'ok');
+        addRecording(method, blob);
+      }).catch(function (err) {
+        statusEl.className = 'status bad';
+        var msg = (err && err.message) ? err.message : String(err);
+        statusEl.textContent = 'FAILED — ' + msg;
+        log('FAILED "' + method.name + '": ' + msg, 'err');
+      }).finally(function () { btn.disabled = false; });
+    });
+  });
+
+  // ───────────────────────── Quick Player Test UI ─────────────────────────
+  var quickTargetEl = document.getElementById('quick-test-target');
+  var quickListEl = document.getElementById('quick-test-list');
+
+  function renderQuickTest() {
+    quickListEl.innerHTML = '';
+    if (!lastRecording) {
+      quickTargetEl.textContent = 'No recording yet — record something above first.';
+      return;
+    }
+    quickTargetEl.textContent = 'Testing on: ' + lastRecording.methodName +
+      ' (' + lastRecording.mimeType + ', ' + lastRecording.sizeKb + ' KB, captured ' + lastRecording.ts + ')';
+
+    playbackMethods.forEach(function (pm) {
+      var row = document.createElement('div'); row.className = 'qt-row';
+
+      var previewEl = document.createElement('div'); previewEl.className = 'qt-preview';
+
+      var nameEl = document.createElement('div'); nameEl.className = 'qt-name';
+      nameEl.textContent = pm.name;
+
+      var detailEl = document.createElement('div'); detailEl.className = 'qt-detail';
+      var statusEl = document.createElement('div'); statusEl.className = 'qt-status'; statusEl.textContent = '–';
+
+      var confirmBtn = document.createElement('button');
+      confirmBtn.textContent = '❔'; confirmBtn.style.display = 'none';
+      confirmBtn.title = 'Cycles: Unconfirmed → 👁 Visible → ⬛ Blank';
+      var cState = 0;
+      confirmBtn.addEventListener('click', function () {
+        cState = (cState + 1) % 3;
+        confirmBtn.textContent = cState === 0 ? '❔' : cState === 1 ? '👁' : '⬛';
+      });
+
+      var testBtn = document.createElement('button'); testBtn.textContent = '▶ Test';
+      testBtn.addEventListener('click', function () {
+        var rec = lastRecording;
+        testBtn.disabled = true; statusEl.textContent = '⏳'; detailEl.textContent = ''; confirmBtn.style.display = 'none';
+        previewEl.innerHTML = '';
+        log('Quick test: "' + pm.name + '" on "' + rec.methodName + '"');
+        pm.run(rec.blob, previewEl).then(function (result) {
+          statusEl.textContent = statusGlyph[result.status] || result.status;
+          detailEl.textContent = result.detail || ''; detailEl.title = result.detail || '';
+          confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
+          log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
+        }).finally(function () { testBtn.disabled = false; });
+      });
+
+      row.appendChild(previewEl); row.appendChild(nameEl); row.appendChild(detailEl); row.appendChild(statusEl);
+      row.appendChild(confirmBtn); row.appendChild(testBtn);
+      quickListEl.appendChild(row);
+    });
+  }
+
+  // ───────────────────────── Recordings list UI ─────────────────────────
+  var recordingsListEl = document.getElementById('recordings-list');
+  var matrixTableEl = document.getElementById('matrix-table');
+  var recCounter = 0;
+
+  function addRecording(method, blob) {
+    recCounter++;
+    var rec = {
+      id: 'rec' + recCounter, methodId: method.id, methodName: method.name, blob: blob,
+      url: URL.createObjectURL(blob), mimeType: blob.type || 'unknown',
+      sizeKb: (blob.size / 1024).toFixed(1), ts: new Date().toLocaleTimeString(), matrixCells: {}
+    };
+    recordings.push(rec);
+    lastRecording = rec;
+    renderRecordingsList();
+    addMatrixRow(rec);
+    renderQuickTest();
+  }
+
+  function sanitizeFilename(s) { return s.replace(/[^a-z0-9]+/gi, '-').toLowerCase(); }
+  function extFromMime(mime) {
+    if (!mime) return 'bin';
+    if (mime.indexOf('webm') !== -1) return 'webm';
+    if (mime.indexOf('mp4') !== -1) return 'mp4';
+    if (mime.indexOf('ogg') !== -1) return 'ogv';
+    return 'video';
+  }
+
+  function renderRecordingsList() {
+    if (recordings.length === 0) {
+      recordingsListEl.innerHTML = '<div class="empty-note">No recordings yet \u2014 use a method above.</div>'; return;
+    }
+    recordingsListEl.innerHTML = '';
+    recordings.forEach(function (rec) {
+      var row = document.createElement('div'); row.className = 'rec-row';
+      var title = document.createElement('strong'); title.textContent = rec.methodName;
+      var meta = document.createElement('div'); meta.className = 'meta';
+      meta.textContent = rec.mimeType + ' \u00b7 ' + rec.sizeKb + ' KB \u00b7 captured ' + rec.ts;
+
+      // Working player: visible thumbnail + unlock pattern
+      var playerRow = document.createElement('div');
+      playerRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+      var thumb = document.createElement('video');
+      thumb.className = 'thumb-video'; thumb.width = 120; thumb.height = 80;
+      thumb.muted = false; thumb.playsInline = true; thumb.setAttribute('playsinline', '');
+      var playBtn = document.createElement('button');
+      playBtn.textContent = '\u25b6 Play (with unlock)';
+      var playerStatus = document.createElement('span');
+      playerStatus.style.cssText = 'font-size:11px;color:#aaa;';
+      var currentUrl = null;
+      playBtn.addEventListener('click', function () {
+        if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+        var url = URL.createObjectURL(rec.blob);
+        currentUrl = url;
+        thumb.src = url;
+        unlockCloudPhoneMediaChannel();
+        playerStatus.textContent = 'playing\u2026';
+        thumb.addEventListener('play', unlockCloudPhoneMediaChannel, { once: true });
+        thumb.addEventListener('playing', function () { playerStatus.textContent = '\u25b6 playing'; }, { once: true });
+        thumb.addEventListener('ended', function () { playerStatus.textContent = 'ended'; }, { once: true });
+        thumb.addEventListener('error', function () { playerStatus.textContent = 'error'; }, { once: true });
+        var p = thumb.play();
+        if (p && p.catch) p.catch(function (e) { playerStatus.textContent = 'failed: ' + e.message; });
+      });
+      playerRow.appendChild(thumb); playerRow.appendChild(playBtn); playerRow.appendChild(playerStatus);
+
+      var btnRow = document.createElement('div'); btnRow.className = 'btn-row';
+      var dlLink = document.createElement('a'); dlLink.href = rec.url;
+      dlLink.download = sanitizeFilename(rec.methodName) + '.' + extFromMime(rec.mimeType);
+      var dlBtn = document.createElement('button'); dlBtn.textContent = '\u2b07 Download'; dlLink.appendChild(dlBtn);
+      var testAllBtn = document.createElement('button'); testAllBtn.textContent = '\u25b6 Test all playback methods';
+      testAllBtn.addEventListener('click', function () { runAllPlaybackForRecording(rec); });
+      btnRow.appendChild(dlLink); btnRow.appendChild(testAllBtn);
+
+      row.appendChild(title); row.appendChild(meta); row.appendChild(playerRow); row.appendChild(btnRow);
+      recordingsListEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('clear-recordings').addEventListener('click', function () {
+    recordings.forEach(function (rec) { URL.revokeObjectURL(rec.url); });
+    recordings = []; lastRecording = null;
+    renderRecordingsList(); renderQuickTest(); matrixTableEl.innerHTML = '';
+    log('Cleared all recordings and matrix', 'info');
+  });
+
+  // ───────────────────────── Matrix UI ─────────────────────────
+  function ensureMatrixHeader() {
+    if (matrixTableEl.querySelector('thead')) return;
+    var thead = document.createElement('thead'), tr = document.createElement('tr');
+    var corner = document.createElement('th'); corner.className = 'rowhead'; corner.textContent = 'Recording \\ Playback';
+    tr.appendChild(corner);
+    playbackMethods.forEach(function (pm) {
+      var th = document.createElement('th'); th.textContent = pm.name; tr.appendChild(th);
+    });
+    thead.appendChild(tr); matrixTableEl.appendChild(thead); matrixTableEl.appendChild(document.createElement('tbody'));
+  }
+
+  function addMatrixRow(rec) {
+    ensureMatrixHeader();
+    var tbody = matrixTableEl.querySelector('tbody'), tr = document.createElement('tr');
+    var rowhead = document.createElement('td'); rowhead.className = 'rowhead';
+    rowhead.textContent = rec.methodName + ' (' + rec.ts + ')';
+    tr.appendChild(rowhead);
+    playbackMethods.forEach(function (pm) {
+      var td = document.createElement('td');
+      var preMarked = pm.knownFail;
+      td.className = preMarked ? 'status-fail' : 'status-untested';
+      var statusSpan = document.createElement('div'); statusSpan.className = 'cell-status';
+      statusSpan.textContent = preMarked ? '❌' : '–';
+      var confirmBtn = document.createElement('button'); confirmBtn.className = 'cell-confirm';
+      confirmBtn.textContent = '❔'; confirmBtn.title = 'Click after looking/listening: Unconfirmed → 👁 Visible → ⬛ Blank';
+      confirmBtn.style.display = 'none';
+      var cState = 0;
+      confirmBtn.addEventListener('click', function () {
+        cState = (cState + 1) % 3;
+        if (cState === 0) { confirmBtn.textContent = '❔'; td.classList.remove('confirm-visible', 'confirm-blank'); }
+        else if (cState === 1) { confirmBtn.textContent = '👁'; td.classList.remove('confirm-blank'); td.classList.add('confirm-visible'); }
+        else { confirmBtn.textContent = '⬛'; td.classList.remove('confirm-visible'); td.classList.add('confirm-blank'); }
+      });
+      td.appendChild(statusSpan); td.appendChild(confirmBtn);
+      td.title = preMarked ? 'Commonly broken on constrained platforms — click to re-test anyway' : 'Click cell to (re)run this test';
+      td.addEventListener('click', function (e) { if (e.target === confirmBtn) return; runPlaybackTest(rec, pm); });
+      tr.appendChild(td);
+      rec.matrixCells[pm.id] = { td: td, statusSpan: statusSpan, confirmBtn: confirmBtn };
+    });
+    tbody.appendChild(tr);
+  }
+
+  function runPlaybackTest(rec, pm) {
+    var cell = rec.matrixCells[pm.id];
+    cell.statusSpan.textContent = '⏳'; cell.td.className = 'status-untested';
+    log('Testing "' + pm.name + '" on "' + rec.methodName + '"…');
+    return pm.run(rec.blob, null).then(function (result) {
+      cell.statusSpan.textContent = statusGlyph[result.status] || result.status;
+      cell.td.className = 'status-' + result.status;
+      cell.confirmBtn.style.display = result.status === 'pass' ? 'inline-block' : 'none';
+      cell.td.title = result.detail || '';
+      log('  → ' + result.status.toUpperCase() + ': ' + (result.detail || ''), result.status === 'pass' ? 'ok' : result.status === 'fail' ? 'err' : 'info');
+      return result;
+    });
+  }
+
+  function runAllPlaybackForRecording(rec) {
+    var chain = Promise.resolve();
+    playbackMethods.forEach(function (pm) {
+      chain = chain.then(function () { return runPlaybackTest(rec, pm); })
+                   .then(function () { return new Promise(function (r) { setTimeout(r, 300); }); });
+    });
+    return chain;
+  }
+
+  document.getElementById('run-full-matrix').addEventListener('click', function () {
+    if (recordings.length === 0) { log('No recordings to test — record something first', 'warn'); return; }
+    log('Running full matrix: ' + recordings.length + ' × ' + playbackMethods.length, 'info');
+    var chain = Promise.resolve();
+    recordings.forEach(function (rec) { chain = chain.then(function () { return runAllPlaybackForRecording(rec); }); });
+    chain.then(function () { log('Full matrix complete', 'ok'); });
+  });
+
+  document.getElementById('clear-matrix').addEventListener('click', function () {
+    recordings.forEach(function (rec) {
+      Object.keys(rec.matrixCells).forEach(function (pid) {
+        var cell = rec.matrixCells[pid];
+        cell.statusSpan.textContent = '–'; cell.td.className = 'status-untested';
+        cell.confirmBtn.style.display = 'none'; cell.confirmBtn.textContent = '❔';
+        cell.td.classList.remove('confirm-visible', 'confirm-blank');
+      });
+    });
+    log('Matrix statuses reset', 'info');
+  });
+
+  document.getElementById('export-json').addEventListener('click', function () {
+    var data = recordings.map(function (rec) {
+      var results = {};
+      Object.keys(rec.matrixCells).forEach(function (pid) {
+        results[pid] = { status: rec.matrixCells[pid].td.className.replace('status-', ''), confirm: rec.matrixCells[pid].confirmBtn.textContent };
+      });
+      return { method: rec.methodName, mimeType: rec.mimeType, sizeKb: rec.sizeKb, capturedAt: rec.ts, playbackResults: results };
+    });
+    var json = JSON.stringify({ url: location.href, userAgent: navigator.userAgent, exportedAt: new Date().toISOString(), recordings: data }, null, 2);
+    var blob = new Blob([json], { type: 'application/json' }), url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'video-test-results.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    log('Exported results JSON', 'ok');
+  });
+
+  log('Video API Test Suite loaded. Protocol: ' + location.protocol + (window.isSecureContext ? ' (secure context ✅)' : ' (NOT secure ⚠️ — getUserMedia will fail)'), 'info');
+
+  // Auto-generate one synthetic sample video on load so the Quick Player Test /
+  // Matrix sections aren't empty before the user records anything themselves.
+  (function autoSeedSample() {
+    if (typeof MediaRecorder === 'undefined' || !document.createElement('canvas').captureStream) {
+      log('Skipping auto-generated sample: captureStream/MediaRecorder unavailable on this platform', 'warn');
+      return;
+    }
+    log('Auto-generating a tiny synthetic sample video…', 'info');
+    recordViaCanvasCapture(2000).then(function (blob) {
+      var seedMethod = recordingMethods[0];
+      log('Sample video ready: ' + (blob.type || 'video/webm') + ', ' + (blob.size / 1024).toFixed(1) + ' KB', 'ok');
+      addRecording(seedMethod, blob);
+    }).catch(function (err) {
+      log('Auto-generate failed: ' + ((err && err.message) ? err.message : String(err)), 'warn');
+    });
+  })();
+})();
+</script>
+</body>
+</html>
