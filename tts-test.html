@@ -1,110 +1,205 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTS Test</title>
+
 <style>
 body{
     margin:0;
     padding:8px;
-    font-family:Arial;
-    text-align:center;
     background:#111;
     color:#fff;
+    font-family:Arial,sans-serif;
+    text-align:center;
 }
+
+#api{
+    padding:6px;
+    margin-bottom:8px;
+    font-weight:bold;
+    border-radius:4px;
+    background:#444;
+    font-size:14px;
+}
+
 textarea{
     width:98%;
     height:60px;
     font-size:14px;
 }
+
 #led{
     width:70px;
     height:70px;
     border-radius:50%;
-    background:#555;
+    background:#666;
     margin:10px auto;
 }
+
 #bar{
     width:100%;
     height:12px;
     background:#333;
 }
+
 #fill{
     width:0%;
     height:100%;
     background:#0f0;
 }
+
+#time{
+    font-size:20px;
+    margin:8px;
+}
+
+#state{
+    font-size:14px;
+    margin:4px;
+}
+
 button{
     width:46%;
     height:40px;
-    margin:5px 1%;
     font-size:16px;
-}
-#time{
-    font-size:22px;
-    margin:8px;
+    margin:5px 1%;
 }
 </style>
 </head>
 <body>
+
+<div id="api">Checking...</div>
 
 <textarea id="txt">Hello! This is a speech synthesis test.</textarea>
 
 <div id="led"></div>
 
 <div id="bar">
-<div id="fill"></div>
+    <div id="fill"></div>
 </div>
 
 <div id="time">0.0 s</div>
 
-<button onclick="go()">▶ Speak</button>
-<button onclick="stop()">■ Stop</button>
+<div id="state">Idle</div>
+
+<button onclick="speak()">Speak</button>
+<button onclick="stop()">Stop</button>
 
 <script>
 
-const synth=speechSynthesis;
-let timer,start;
+const synth = window.speechSynthesis;
 
-function go(){
+const api = document.getElementById("api");
+const led = document.getElementById("led");
+const fill = document.getElementById("fill");
+const state = document.getElementById("state");
+const timerText = document.getElementById("time");
+const txt = document.getElementById("txt");
 
-    synth.cancel();
+let timer;
+let startTime;
 
-    const u=new SpeechSynthesisUtterance(txt.value);
-
-    fill.style.width="0%";
-    led.style.background="orange";
-
-    start=Date.now();
-
-    timer=setInterval(()=>{
-        time.textContent=((Date.now()-start)/1000).toFixed(1)+" s";
-
-        if(synth.speaking)
-            led.style.background="lime";
-    },100);
-
-    u.onboundary=e=>{
-        fill.style.width=
-        (100*e.charIndex/txt.value.length)+"%";
-    };
-
-    u.onstart=()=>{
-        led.style.background="lime";
-    };
-
-    u.onend=finish;
-    u.onerror=finish;
-
-    synth.speak(u);
+function setLed(color){
+    led.style.background=color;
 }
 
 function finish(){
-
     clearInterval(timer);
+}
 
-    led.style.background="red";
+function checkAPI(){
 
-    fill.style.width="100%";
+    if(!("speechSynthesis" in window)){
+        api.style.background="#900";
+        api.innerHTML="❌ API NOT SUPPORTED";
+        return;
+    }
+
+    api.style.background="#060";
+    api.innerHTML="✅ API SUPPORTED";
+
+    setTimeout(()=>{
+        let voices=synth.getVoices().length;
+
+        api.innerHTML+=" | Voices: "+voices;
+
+        if(voices===0){
+            api.style.background="#b60";
+        }
+
+    },500);
+
+}
+
+checkAPI();
+
+if(synth.onvoiceschanged!==undefined){
+    synth.onvoiceschanged=checkAPI;
+}
+
+function speak(){
+
+    synth.cancel();
+
+    fill.style.width="0%";
+    timerText.innerHTML="0.0 s";
+    state.innerHTML="Queued";
+    setLed("orange");
+
+    const u=new SpeechSynthesisUtterance(txt.value);
+
+    startTime=Date.now();
+
+    timer=setInterval(()=>{
+
+        timerText.innerHTML=
+        ((Date.now()-startTime)/1000).toFixed(1)+" s";
+
+    },100);
+
+    u.onstart=()=>{
+
+        state.innerHTML="Started";
+
+        setLed("lime");
+
+    };
+
+    u.onboundary=(e)=>{
+
+        state.innerHTML="Speaking";
+
+        fill.style.width=
+        (e.charIndex/txt.value.length*100)+"%";
+
+    };
+
+    u.onend=()=>{
+
+        finish();
+
+        fill.style.width="100%";
+
+        state.innerHTML="Ended";
+
+        setLed("purple");
+
+    };
+
+    u.onerror=(e)=>{
+
+        finish();
+
+        state.innerHTML="Error: "+e.error;
+
+        setLed("red");
+
+    };
+
+    synth.speak(u);
+
 }
 
 function stop(){
@@ -112,6 +207,10 @@ function stop(){
     synth.cancel();
 
     finish();
+
+    state.innerHTML="Stopped";
+
+    setLed("gray");
 
 }
 
