@@ -1,138 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>TTS Tester</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 body{
+    margin:0;
+    padding:8px;
     font-family:Arial;
-    max-width:700px;
-    margin:40px auto;
-    padding:20px;
+    text-align:center;
+    background:#111;
+    color:#fff;
 }
 textarea{
-    width:100%;
-    height:120px;
+    width:98%;
+    height:60px;
+    font-size:14px;
 }
-select,button{
-    padding:10px;
-    margin:6px 0;
+#led{
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background:#555;
+    margin:10px auto;
+}
+#bar{
+    width:100%;
+    height:12px;
+    background:#333;
+}
+#fill{
+    width:0%;
+    height:100%;
+    background:#0f0;
 }
 button{
-    cursor:pointer;
+    width:46%;
+    height:40px;
+    margin:5px 1%;
+    font-size:16px;
+}
+#time{
+    font-size:22px;
+    margin:8px;
 }
 </style>
 </head>
 <body>
 
-<h2>Browser TTS Tester</h2>
+<textarea id="txt">Hello! This is a speech synthesis test.</textarea>
 
-<textarea id="text">
-Hello! This is a browser text to speech test.
-</textarea>
+<div id="led"></div>
 
-<br>
+<div id="bar">
+<div id="fill"></div>
+</div>
 
-<label>Voice</label><br>
-<select id="voices"></select>
+<div id="time">0.0 s</div>
 
-<br>
-
-<label>Rate</label>
-<input id="rate" type="range" min="0.5" max="2" value="1" step="0.1">
-
-<span id="rateVal">1</span>
-
-<br>
-
-<button onclick="speakBrowser()">Speak (Browser)</button>
-<button onclick="stopSpeech()">Stop</button>
-
-<hr>
-
-<h3>Free Online TTS (Google Translate)</h3>
-
-<select id="lang">
-<option value="en">English</option>
-<option value="hi">Hindi</option>
-<option value="bn">Bengali</option>
-<option value="fr">French</option>
-<option value="es">Spanish</option>
-</select>
-
-<br><br>
-
-<button onclick="playGoogle()">Play via Free API</button>
+<button onclick="go()">▶ Speak</button>
+<button onclick="stop()">■ Stop</button>
 
 <script>
 
-const synth = window.speechSynthesis;
-const voiceSelect = document.getElementById("voices");
+const synth=speechSynthesis;
+let timer,start;
 
-function loadVoices(){
-
-    let voices = synth.getVoices();
-
-    voiceSelect.innerHTML="";
-
-    voices.forEach((voice,index)=>{
-
-        let option=document.createElement("option");
-        option.value=index;
-        option.text=
-            voice.name+
-            " ("+
-            voice.lang+
-            ")" +
-            (voice.default?" [Default]":"");
-
-        voiceSelect.appendChild(option);
-
-    });
-
-}
-
-loadVoices();
-
-if(speechSynthesis.onvoiceschanged!==undefined){
-    speechSynthesis.onvoiceschanged=loadVoices;
-}
-
-rate.oninput=()=>{
-rateVal.innerText=rate.value;
-};
-
-function speakBrowser(){
+function go(){
 
     synth.cancel();
 
-    const utter=new SpeechSynthesisUtterance(text.value);
+    const u=new SpeechSynthesisUtterance(txt.value);
 
-    const voices=synth.getVoices();
+    fill.style.width="0%";
+    led.style.background="orange";
 
-    utter.voice=voices[voiceSelect.value];
+    start=Date.now();
 
-    utter.rate=parseFloat(rate.value);
+    timer=setInterval(()=>{
+        time.textContent=((Date.now()-start)/1000).toFixed(1)+" s";
 
-    synth.speak(utter);
+        if(synth.speaking)
+            led.style.background="lime";
+    },100);
 
+    u.onboundary=e=>{
+        fill.style.width=
+        (100*e.charIndex/txt.value.length)+"%";
+    };
+
+    u.onstart=()=>{
+        led.style.background="lime";
+    };
+
+    u.onend=finish;
+    u.onerror=finish;
+
+    synth.speak(u);
 }
 
-function stopSpeech(){
+function finish(){
+
+    clearInterval(timer);
+
+    led.style.background="red";
+
+    fill.style.width="100%";
+}
+
+function stop(){
+
     synth.cancel();
-}
 
-function playGoogle(){
-
-    const txt=encodeURIComponent(text.value);
-
-    const lang=document.getElementById("lang").value;
-
-    const url=
-    `https://translate.google.com/translate_tts?ie=UTF-8&q=${txt}&tl=${lang}&client=tw-ob`;
-
-    new Audio(url).play();
+    finish();
 
 }
 
